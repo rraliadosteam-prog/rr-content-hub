@@ -4,17 +4,16 @@
 **Rama:** `cursor/flow-fotos-video-ia-58f6` · PR #1.
 **Alcance:** corrige una decisión equivocada de `docs/06_spec_v2.md` (§2, decisión 2 y §6).
 
-## Qué dice la spec v2 (mal)
+## Corrección
 
-La spec v2 affirmed que «los editores pro de foto y video quedan fuera del Hub por ahora»
-y que la integración con Craft era una «propuesta de contrato futuro que deberá aprobarse
-de nuevo». Con esa frase, el Hub se quedaba sin editor: quien tuviera que retocar una
-foto o montar un video tenía que salirse del Hub, abrir otra herramienta y volver.
+La spec v2 dijo por error que los editores pro de foto y video quedaban fuera del Hub por ahora.
+Con esa frase, quien tuviera que retocar una foto o montar un video tenía que salir del Hub,
+abrir otra herramienta y volver.
 
 ## La decisión real de Rosas
 
 > **La spec v2 dijo por error que los editores pro quedaban fuera del Hub. Decisión real de
-> Rosas: los editors de foto y video van DENTRO del Content Hub; nadie tiene que salir del
+> Rosas: los editores de foto y video van DENTRO del Content Hub; nadie tiene que salir del
 > hub para editar.**
 
 ## Qué significa en el producto
