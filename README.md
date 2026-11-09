@@ -19,6 +19,7 @@ El hub está abierto: **cualquiera con el link ve todo** lo que ve el admin, sin
 | `/select-project` | Los tres proyectos (Wundeer, Satiro, BOGA) |
 | `/<proyecto>` | Dashboard, fases y cola de trabajo |
 | `/<proyecto>/ideas` · `/ideas/<id>` | Banco de piezas y ficha completa |
+| `/<proyecto>/flow-ia` | Flow · Fotos y video con IA (se abre en otra pestaña; el archivo vuelve por Drive) |
 | `/<proyecto>/aprobaciones · produccion · publicaciones · metricas` | Colas por fase |
 | `/audit` · `/audit/admin` | Índice global y panel de equipo/accesos |
 
@@ -41,6 +42,19 @@ npm run dev
 ```
 
 Para datos reales hay que configurar Supabase y las variables de `.env.example`.
+
+### Google Flow (ruta A)
+
+El módulo **Flow · Fotos y video con IA** (`/<proyecto>/flow-ia`) no incrusta Flow ni usa una API. Abre el selector de cuentas de Google en otra pestaña y el archivo vuelve por una carpeta de Drive. La interfaz está en español de Colombia y usa los tokens que ya tiene el hub (negro, crema, fucsia, mostaza, orquídea; Space Grotesk y DM Mono).
+
+Dos variables públicas, sin secretos. Van en `.env.example` y, para que el equipo las vea, también en el entorno de Vercel (Preview y Production). Si quedan vacías, el hub sigue funcionando: el selector abre sin cuenta preseleccionada y la carpeta se muestra como pendiente.
+
+| Variable | Quién la llena | Si está vacía |
+|---|---|---|
+| `NEXT_PUBLIC_FLOW_DEFAULT_ACCOUNT` | Dirección (Rosas). Correo de la cuenta de RR, por ejemplo el grupo familiar de Google One. | «Abrir Flow con la cuenta de RR» abre el selector sin preseleccionar correo. |
+| `NEXT_PUBLIC_FLOW_DRIVE_FOLDER_URL` | Dirección. Enlace `https` de la carpeta en `drive.google.com`. | El bloque «Devolver al hub» dice: «Pendiente: Dirección configura la carpeta de Drive». |
+
+No poner contraseñas, llaves ni tokens en esas variables. Cada persona usa su propia cuenta o el grupo familiar de RR.
 
 ## Base de datos
 

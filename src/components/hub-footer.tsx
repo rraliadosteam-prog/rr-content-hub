@@ -74,6 +74,9 @@ export function HubFooter({ slug, projectName }: { slug: string; projectName: st
           <Link href={`/${slug}/ideas`} className="inline-flex min-h-[44px] items-center font-mono text-[11px] text-blanco-60 underline-offset-4 transition-colors hover:text-blanco hover:underline">
             BANCO DE IDEAS
           </Link>
+          <Link href={`/${slug}/flow-ia`} className="inline-flex min-h-[44px] items-center font-mono text-[11px] text-blanco-60 underline-offset-4 transition-colors hover:text-blanco hover:underline">
+            FLOW · IA
+          </Link>
           <Link href={`/select-project`} className="inline-flex min-h-[44px] items-center font-mono text-[11px] text-blanco-60 underline-offset-4 transition-colors hover:text-blanco hover:underline">
             CAMBIAR DE PROYECTO
           </Link>
