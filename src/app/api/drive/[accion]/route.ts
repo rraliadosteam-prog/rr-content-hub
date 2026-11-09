@@ -10,6 +10,8 @@ import {
   idDriveValido,
 } from '@/lib/drive';
 import { ARCHIVOS_DEMO, CARPETAS_DEMO, CUENTA_GOOGLE_DEMO } from '@/lib/material-demo';
+import { TAMANO_MAX_ENTREGA } from '@/lib/material';
+import { checkDbLimit, recordDbFailure, recordDbSuccess, retryAfterDb } from '../../_lib/rate-limit-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,12 +52,36 @@ function error(mensaje: string, estado = 400) {
   return NextResponse.json({ error: mensaje }, { status: estado });
 }
 
+/** De dónde viene la petición, para el límite de tasa. */
+function origenDe(request: NextRequest): string {
+  const cadena = request.headers.get('x-forwarded-for') ?? '';
+  const primera = cadena.split(',')[0]?.trim();
+  return primera || 'desconocido';
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ accion: string }> },
 ) {
   const { accion } = await params;
   const token = tokenDe(request);
+
+  // El proxy habla con Drive por cada búsqueda y por cada subida: sin un
+  // límite, un bucle en el navegador convierte este servidor en un cliente
+  // de la API de Google. Mismo control que usa `/api/subir`.
+  const ip = origenDe(request);
+  const ruta = `/api/drive/${accion}`;
+  const ok = await checkDbLimit(ip, ruta, 60);
+  if (!ok) {
+    const espera = await retryAfterDb(ip, ruta);
+    const respuesta = NextResponse.json(
+      { error: 'Demasiadas consultas a Drive. Intenta de nuevo mas tarde.' },
+      { status: 429 },
+    );
+    respuesta.headers.set('Retry-After', String(espera));
+    return respuesta;
+  }
+  await recordDbFailure(ip, ruta);
 
   let cuerpo: Record<string, unknown> = {};
   try {
@@ -65,14 +91,26 @@ export async function POST(
   }
 
   switch (accion) {
-    case 'listar':
-      return listar(cuerpo, token);
-    case 'subir':
-      return subir(cuerpo, token);
-    case 'bajar':
-      return bajar(cuerpo, token);
-    case 'cuenta':
-      return cuenta(token);
+    case 'listar': {
+      const respuesta = await listar(cuerpo, token);
+      await recordDbSuccess(ip, ruta);
+      return respuesta;
+    }
+    case 'subir': {
+      const respuesta = await subir(cuerpo, token);
+      await recordDbSuccess(ip, ruta);
+      return respuesta;
+    }
+    case 'bajar': {
+      const respuesta = await bajar(cuerpo, token);
+      await recordDbSuccess(ip, ruta);
+      return respuesta;
+    }
+    case 'cuenta': {
+      const respuesta = await cuenta(token);
+      await recordDbSuccess(ip, ruta);
+      return respuesta;
+    }
     default:
       return error('Acción de Drive desconocida.', 404);
   }
@@ -111,6 +149,13 @@ async function subir(cuerpo: Record<string, unknown>, token: string | null) {
 
   if (!nombre) return error('El archivo no tiene nombre.');
   if (!idDriveValido(carpetaId)) return error('La carpeta de destino no es válida.');
+
+  // El proxy carga el archivo en memoria, así que hay un tope. Es el mismo
+  // que el del bucket del hub (50 MB) y se comprueba ANTES de decodificar.
+  const maximoBase64 = Math.ceil((TAMANO_MAX_ENTREGA * 4) / 3) + 4096;
+  if (base64.length > maximoBase64) {
+    return error('El archivo supera los 50 MB que el hub sube a Drive por vez.', 413);
+  }
 
   let bytes: Buffer;
   try {

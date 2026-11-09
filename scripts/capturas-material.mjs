@@ -17,7 +17,7 @@ const navegador = await chromium.launch({
 for (const vista of VISTAS) {
   const contexto = await navegador.newContext({
     viewport: { width: vista.ancho, height: vista.alto },
-    deviceScaleFactor: 2,
+    deviceScaleFactor: 1,
     isMobile: vista.movil,
     hasTouch: vista.movil,
     locale: 'es-CO',

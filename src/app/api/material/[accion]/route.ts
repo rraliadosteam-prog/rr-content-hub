@@ -12,6 +12,7 @@ import {
 } from '@/lib/material-server';
 import { TAMANO_MAX_ENTREGA, type EventoMaterial } from '@/lib/material';
 import { cuentaGoogleDe, URL_INFO_USUARIO } from '@/lib/drive';
+import { checkDbLimit, recordDbFailure, recordDbSuccess, retryAfterDb } from '../../_lib/rate-limit-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +67,42 @@ function error(mensaje: string, estado = 400) {
   return NextResponse.json({ error: mensaje }, { status: estado });
 }
 
+/** De dónde viene la petición, para el límite de tasa. */
+function origenDe(request: NextRequest): string {
+  const cadena = request.headers.get('x-forwarded-for') ?? '';
+  const primera = cadena.split(',')[0]?.trim();
+  return primera || 'desconocido';
+}
+
+/**
+ * El límite de tasa.
+ *
+ * El hub está en acceso libre, pero libre no es «sin límite»: estas rutas
+ * escriben en la base y mueven bytes a un almacenamiento. Con el mismo control
+ * que usa `/api/subir` (la tabla `rr_hub_rate_limit`, que ya existe) se corta
+ * el abuso sin inventar una tabla nueva.
+ */
+async function conLimite(request: NextRequest, path: string, max: number) {
+  const ip = origenDe(request);
+  const ok = await checkDbLimit(ip, path, max);
+  if (!ok) {
+    const espera = await retryAfterDb(ip, path);
+    const respuesta = NextResponse.json(
+      { error: 'Demasiadas acciones por ahora. Intenta de nuevo mas tarde.' },
+      { status: 429 },
+    );
+    respuesta.headers.set('Retry-After', String(espera));
+    return { respuesta, ip };
+  }
+  await recordDbFailure(ip, path);
+  return { respuesta: null, ip };
+}
+
+/** La accion se hizo bien: se borra la cuenta del origen. */
+async function sinLimite(ip: string, path: string) {
+  await recordDbSuccess(ip, path);
+}
+
 /**
  * Escribe un evento en el registro de auditoría.
  *
@@ -90,6 +127,10 @@ export async function POST(
 ) {
   const { accion } = await params;
   const token = tokenDe(request);
+
+  const limite = await conLimite(request, `/api/material/${accion}`, 30);
+  if (limite.respuesta) return limite.respuesta;
+  const ruta = `/api/material/${accion}`;
 
   let cuerpo: Record<string, unknown> = {};
   try {
@@ -125,6 +166,7 @@ export async function POST(
     if (!resultado) {
       return error('No se pudo registrar la acción en la auditoría. Avisa a Dirección.', 500);
     }
+    await sinLimite(limite.ip, ruta);
     return NextResponse.json({ ok: true, id: materialId });
   }
 
@@ -137,6 +179,13 @@ export async function POST(
     const base64 = typeof cuerpo.bytes === 'string' ? cuerpo.bytes : '';
     if (!materialId) return error('El material no tiene identificación.');
     if (!cliente) return error('El material no tiene cliente: no se sabe a quién se entrega.');
+
+    // El límite se comprueba ANTES de decodificar: un cuerpo de 200 MB en
+    // base64 se tiene que rechazar sin convertirlo a bytes primero.
+    const maximoBase64 = Math.ceil((TAMANO_MAX_ENTREGA * 4) / 3) + 4096;
+    if (base64.length > maximoBase64) {
+      return error('La versión final supera los 50 MB del almacenamiento de entrega.', 413);
+    }
 
     let bytes: Uint8Array;
     try {
@@ -169,6 +218,7 @@ export async function POST(
       cuentaGoogle,
       detalle: `Enlace firmado por ${resultado.minutos} minutos`,
     });
+    await sinLimite(limite.ip, ruta);
 
     return NextResponse.json({
       ok: true,
