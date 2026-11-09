@@ -5,33 +5,44 @@
  * el hub no lo incrusta ni habla con él. Solo arma dos enlaces públicos: el
  * selector de cuentas de Google y la carpeta de Drive donde vuelve el archivo.
  * Aquí no hay llaves, tokens ni contraseñas.
+ *
+ * DESDE 2026-11-09: EL HUB NO PRESELECCIONA NINGUNA CUENTA.
+ *
+ * Antes este archivo tenía `correoValido()`, la clave `CLAVE_CORREO_FLOW` y
+ * una función que metía `Email=` en el AccountChooser, más `hd` y
+ * `login_hint`. Todo eso salió por la misma razón: cada colaborador tiene que
+ * entrar a Flow con SU correo personal, y la cuenta de empresa no existe.
+ *
+ * Quitar la preselección no es una mejora de estilo, es una corrección de
+ * hechos:
+ *
+ *   - `Email=` hace que Google entre con ESA cuenta sin preguntar. Con la
+ *     cuenta de RR, la persona acababa trabajando dentro de la cuenta de la
+ *     empresa sin saberlo.
+ *   - `hd=` y `login_hint=` PARTEN de una cuenta de empresa. Sin una cuenta de
+ *     empresa real, son inventos: apuntan a un dominio que puede no existir.
+ *   - El «recordar mi correo» en `localStorage` solo servía para volver a
+ *     preseleccionar. Sin preselección no hay nada que recordar, así que se
+ *     quitó el campo y con él el dato guardado en el equipo de cada persona.
+ *
+ * Lo que queda es un enlace que abre el selector de Google con Flow de
+ * destino: cada quien elige su cuenta personal ahí, sin que el hub sepa cuál.
  */
 
 export const FLOW_URL = 'https://flow.google.com/';
 
-/** Solo el correo, en este navegador. Nunca una contraseña ni un token. */
-export const CLAVE_CORREO_FLOW = 'rr-hub-flow-correo-v1';
-
 const SELECTOR_CUENTAS = 'https://accounts.google.com/AccountChooser';
-const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Correo usable en el selector. Vacío o inválido devuelve null. */
-export function correoValido(valor: string | null | undefined): string | null {
-  const limpio = valor?.trim() ?? '';
-  if (!limpio || limpio.length > 254 || !CORREO.test(limpio)) return null;
-  return limpio;
-}
 
 /**
- * Selector de Google con Flow como destino.
- * Si `cuenta` es un correo, se preselecciona con `Email`. Si no, el selector
- * abre sin cuenta.
+ * Selector de cuentas de Google con Flow como destino.
+ *
+ * SIN cuenta: a propósito. `continue` es lo único que se manda, así que
+ * Google pregunta con qué cuenta se entra. Si algún día se vuelve a poner un
+ * `Email=` aquí, la cuenta de empresa vuelve a impersonar a la persona.
  */
-export function urlAbrirFlow(cuenta?: string | null): string {
+export function urlAbrirFlow(): string {
   const params = new URLSearchParams();
   params.set('continue', FLOW_URL);
-  const correo = correoValido(cuenta);
-  if (correo) params.set('Email', correo);
   return `${SELECTOR_CUENTAS}?${params.toString()}`;
 }
 
