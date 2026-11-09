@@ -12,7 +12,10 @@ import { describe, expect, it } from 'vitest';
  */
 
 const panel = readFileSync(new URL('../components/material-panel.tsx', import.meta.url), 'utf8');
-const editor = readFileSync(new URL('../components/editor-foto.tsx', import.meta.url), 'utf8');
+const editor = readFileSync(new URL('../components/estudio/photo-studio.tsx', import.meta.url), 'utf8');
+const editorVideo = readFileSync(new URL('../components/estudio/video-studio.tsx', import.meta.url), 'utf8');
+const paginaFoto = readFileSync(new URL('../app/[projectSlug]/editar/foto/page.tsx', import.meta.url), 'utf8');
+const paginaVideo = readFileSync(new URL('../app/[projectSlug]/editar/video/page.tsx', import.meta.url), 'utf8');
 const pagina = readFileSync(new URL('../app/[projectSlug]/material/page.tsx', import.meta.url), 'utf8');
 const drive = readFileSync(new URL('../app/api/drive/[accion]/route.ts', import.meta.url), 'utf8');
 const material = readFileSync(new URL('../app/api/material/[accion]/route.ts', import.meta.url), 'utf8');
@@ -35,14 +38,28 @@ describe('módulo de material', () => {
     expect(drive).not.toMatch(/NEXT_PUBLIC_SUPABASE_ANON_KEY/);
   });
 
-  it('el video va como «Próximamente» y no se edita', () => {
-    expect(panel).toMatch(/Video · Próximamente/);
-    expect(panel).toMatch(/Próximamente/);
-    // El editor es de fotos: no hay etiqueta de video, ni tipo de video, ni
-    // captura de video. Solo se mentions en el comentario que explica por qué.
+  it('el video se edita en el editor de video del hub, no en el de foto', () => {
+    // MEDIDO 2026-11-09. Antes el video de Material era un «Próximamente» y
+    // el editor de foto era el único editor. Con los editores de la misión B
+    // integrados en el hub, el video tiene destino: la sección «Editar video».
+    expect(panel).toMatch(/editar\/video/);
+    expect(panel).not.toMatch(/Video · Próximamente/);
+    // El editor de FOTO sigue sin ser un editor de video: no tiene etiqueta de
+    // video, ni tipo de video, ni captura de video.
     expect(editor).not.toMatch(/<video/);
     expect(editor).not.toMatch(/video\/mp4/);
     expect(editor).not.toMatch(/captureStream/);
+    // Y el de video sí: exporta en WebM y en MP4 (H.264).
+    expect(editorVideo).toMatch(/mp4/);
+    expect(editorVideo).toMatch(/H\.264/);
+  });
+
+  it('los editores son secciones del hub, no enlaces a otro sitio', () => {
+    // Decisión de Rosas: los editores de foto y video van DENTRO del hub.
+    expect(paginaFoto).toMatch(/PhotoStudio/);
+    expect(paginaVideo).toMatch(/VideoStudio/);
+    expect(paginaFoto).not.toMatch(/href="http/);
+    expect(paginaVideo).not.toMatch(/href="http/);
   });
 
   it('el panel avisa cuando el archivo es de otro cliente', () => {

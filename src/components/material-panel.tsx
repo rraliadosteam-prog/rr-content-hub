@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Icon } from '@/components/ui/icons';
-import { EditorFoto } from '@/components/editor-foto';
+import PhotoStudio from '@/components/estudio/photo-studio';
 import {
   AVISO_CLIENTE_AJENO,
   AVISO_TODOS_VEN_TODO,
@@ -91,7 +92,6 @@ export function MaterialPanel({
   const [eventos, setEventos] = useState<EventoMaterialFila[]>(eventosIniciales);
   const [entregas, setEntregas] = useState<Record<string, Entrega>>({});
   const [registrados, setRegistrados] = useState<{ material: Material; blob: Blob }[]>([]);
-  const [version, setVersion] = useState(1);
 
   const slugs = useMemo(() => clientes.map((c) => c.slug), [clientes]);
 
@@ -183,7 +183,7 @@ export function MaterialPanel({
     try {
       let url: string;
       if (archivo.esVideo) {
-        setAviso('El video va como «Próximamente»: por ahora solo se editan fotos.');
+        setAviso('El video se edita en «Editar video», dentro del hub. Ahí se importa el archivo.');
         return;
       }
       const respuesta = await fetch('/api/drive/bajar', {
@@ -244,7 +244,6 @@ export function MaterialPanel({
     }
     setAviso('Versión editada registrada. Ya se puede entregar.');
     setRegistrados((actual) => [...actual, { material, blob }]);
-    setVersion((v) => v + 1);
     await refrescarRegistro();
     setEditando(null);
   }
@@ -555,12 +554,13 @@ export function MaterialPanel({
                   )}
                   <div className="mt-auto flex flex-wrap gap-2">
                     {archivo.esVideo ? (
-                      <span
-                        data-testid="material-video-proximamente"
-                        className="inline-flex min-h-[44px] items-center border border-blanco-30 px-3 text-xs text-blanco-70"
+                      <Link
+                        href={`/${cliente}/editar/video`}
+                        data-testid={`material-editar-video-${archivo.id}`}
+                        className="btn-ghost min-h-[44px] justify-center"
                       >
-                        Video · Próximamente
-                      </span>
+                        Editar video
+                      </Link>
                     ) : (
                       <button
                         type="button"
@@ -593,10 +593,9 @@ export function MaterialPanel({
               {AVISO_CLIENTE_AJENO}
             </p>
           )}
-          <EditorFoto
-            nombre={editando.nombre}
-            src={editando.src}
-            version={version}
+          <PhotoStudio
+            nombreArchivo={editando.nombre}
+            srcInicial={editando.src}
             onCancelar={() => setEditando(null)}
             onGuardar={guardarEditado}
           />
