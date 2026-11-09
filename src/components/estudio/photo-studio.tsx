@@ -21,6 +21,7 @@ import {
 import { compose, readPixel, SourceMap } from '@/lib/estudio/foto/compose';
 import { createDemoImage } from '@/lib/estudio/foto/demo';
 import { downloadBlob, uid } from '@/lib/estudio/utils';
+import { anunciarEditorAbierto } from '@/lib/editor-abierto';
 import { Field, Modal, Panel, Slider, Toggle } from './ui';
 
 type Tool = 'mover' | 'recortar' | 'fondo';
@@ -153,6 +154,15 @@ export default function PhotoStudio({ nombreArchivo, srcInicial, onGuardar, onCa
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 2800);
+  }, []);
+
+  /**
+   * Mientras este editor está abierto, el botón flotante «¿CÓMO SE USA?» se
+   * aparta: antes tapaba «Guardar versión editada».
+   */
+  useEffect(() => {
+    anunciarEditorAbierto(true);
+    return () => anunciarEditorAbierto(false);
   }, []);
 
   /**

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getProject, getClientesDeLaPersona } from '@/lib/data';
 import { rolEnProyecto } from '@/lib/project-guard';
 import { WorkspaceShell } from '@/components/workspace-shell';
+import { planPublicacionDe } from '@/lib/social-planning';
 
 export default async function ProjectLayout({ children, params }: { children: React.ReactNode; params: Promise<{ projectSlug: string }> }) {
   const { projectSlug } = await params;
@@ -22,6 +23,12 @@ export default async function ProjectLayout({ children, params }: { children: Re
   // puede pulsar; la fila de la base decide qué se puede abrir.
   const clientes = await getClientesDeLaPersona();
 
+  // El plan de publicación solo existe para los clientes que lo tienen. La
+  // entrada de menú se decide AQUÍ, en el servidor, con el mismo dato que usa
+  // la página: así el enlace y la pantalla nunca discrepan. Un enlace que
+  // lleva a un 404 es peor que no tener el enlace.
+  const tienePlanSocial = planPublicacionDe(projectSlug) !== null;
+
   return (
     <WorkspaceShell
       project={project}
@@ -30,6 +37,7 @@ export default async function ProjectLayout({ children, params }: { children: Re
       // Misma regla que la API: sin sesión no hay rol propio (`resolverRol`).
       puedeEscribir={veredicto.puedeEscribir}
       clientes={clientes}
+      tienePlanSocial={tienePlanSocial}
     >
       {children}
     </WorkspaceShell>

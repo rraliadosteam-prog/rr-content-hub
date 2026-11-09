@@ -17,6 +17,7 @@ import { DEMO_CLIPS, DEMO_TONE, makeToneWavBlob } from '@/lib/estudio/video/demo
 import { renderComposition, SourceStore, syncSources } from '@/lib/estudio/video/render';
 import { exportProject, ExportSettings, type FormatoExport } from '@/lib/estudio/video/export';
 import { downloadBlob, formatTime, uid } from '@/lib/estudio/utils';
+import { anunciarEditorAbierto } from '@/lib/editor-abierto';
 import Timeline from './timeline';
 import { ChipGroup, Field, Modal, Panel, Slider, Toggle } from './ui';
 
@@ -134,6 +135,12 @@ export default function VideoStudio() {
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 2600);
+  }, []);
+
+  /** Mientras el editor está abierto, el botón flotante de la guía se aparta. */
+  useEffect(() => {
+    anunciarEditorAbierto(true);
+    return () => anunciarEditorAbierto(false);
   }, []);
 
   // Prepara el audio de demostración (se genera en el navegador, sin archivos externos).

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { crearSesion, NOMBRE_COOKIE } from '@/lib/hub-session';
 import { createServiceClient } from '@/lib/supabase/service';
 import { RESPUESTA_LIMITE } from '@/lib/rate-limit';
+import { DEMO_MODE } from '@/lib/demo-mode';
 import { checkDbLimit, recordDbFailure, recordDbSuccess, retryAfterDb } from '../_lib/rate-limit-db';
 
 /**
@@ -66,6 +67,55 @@ export async function POST(request: Request) {
   if (codigo.length !== 4) {
     await recordDbFailure(origen, path);
     return sinCookie();
+  }
+
+  /**
+   * MEDIDO 2026-11-09. El modo ejemplo (sin Supabase) no tenía puerta: la
+   * pantalla `/login` no existía y las escrituras no tenían a dónde ir.
+   *
+   * Aquí la puerta del ejemplo es la de verdad —código de cuatro dígitos, cookie
+   * firmada, la misma que en producción— con los clientes y las personas del
+   * ejemplo. Lo que NO se hace es tocar la base real: en modo ejemplo no hay
+   * ninguna, y `crearSesion` firma con `HUB_SECRET` como siempre.
+   */
+  if (DEMO_MODE) {
+    const { demoProjects, demoEquipo } = await import('@/lib/demo-data');
+    const cliente = demoProjects.find((p) => p.access_code === codigo);
+    if (!cliente) {
+      await recordDbFailure(origen, path);
+      return sinCookie();
+    }
+    const correo = String(cuerpo.correo ?? '').trim().toLowerCase();
+    if (!correo) {
+      return NextResponse.json({
+        cliente: { slug: cliente.slug, nombre: cliente.name },
+        personas: demoEquipo.map((p) => ({ nombre: p.nombre, correo: p.email })),
+        demo: true,
+      });
+    }
+    const persona = demoEquipo.find((p) => p.email === correo);
+    if (!persona) {
+      await recordDbFailure(origen, path);
+      return NextResponse.json(
+        { error: 'Ese código no abre ningún cliente, o no tienes acceso a él.' },
+        { status: 401 },
+      );
+    }
+    await recordDbSuccess(origen, path);
+    const { valor, maxAge } = crearSesion({ nombre: persona.nombre, email: persona.email, proyecto: cliente.slug });
+    const respuesta = NextResponse.json({
+      ok: true,
+      cliente: { slug: cliente.slug, nombre: cliente.name },
+      demo: true,
+    });
+    respuesta.cookies.set(NOMBRE_COOKIE, valor, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge,
+    });
+    return respuesta;
   }
 
   const service = await createServiceClient();

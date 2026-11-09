@@ -35,10 +35,34 @@ export type Idea = {
   edit: string;
 };
 
+/**
+ * Los clientes del ejemplo, con su código de puerta.
+ *
+ * MEDIDO 2026-11-09: la puerta (la pantalla `/login`) no existía y no había
+ * forma de entrar a nada. El ejemplo necesita una puerta que funcione de
+ * verdad, y para eso cada cliente tiene su código de cuatro dígitos.
+ *
+ * Los códigos del ejemplo son DEL EJEMPLO (`9xxx`), no los de producción:
+ * una puerta de ejemplo no puede abrir la puerta de verdad. Los de
+ * producción viven en `rr_hub_projects.access_code` y los edita Dirección.
+ */
 export const demoProjects = [
-  { id: 'wundeer', name: 'WUNDEER', client_name: 'Wuundeer · Moda', slug: 'wundeer', brand_primary_color: '#be076d', description: 'Contenido orgánico y pauta para la operación crítica de moda.' },
-  { id: 'satiro', name: 'SÁTIRO', client_name: 'Sátiro Sushi · Gastronomía', slug: 'satiro', brand_primary_color: '#ded116', description: 'Plataforma gastronómica, contenido y conversión local.' },
-  { id: 'boga', name: 'BOGA', client_name: 'BOGA · Marca', slug: 'boga', brand_primary_color: '#973d8f', description: 'Branding, comunicación y contenido de marca.' },
+  { id: 'wundeer', name: 'WUNDEER', client_name: 'Wuundeer · Moda', slug: 'wundeer', brand_primary_color: '#be076d', description: 'Contenido orgánico y pauta para la operación crítica de moda.', access_code: '9001' },
+  { id: 'satiro', name: 'SÁTIRO', client_name: 'Sátiro Sushi · Gastronomía', slug: 'satiro', brand_primary_color: '#ded116', description: 'Plataforma gastronómica, contenido y conversión local.', access_code: '9002' },
+  { id: 'boga', name: 'BOGA', client_name: 'BOGA · Marca', slug: 'boga', brand_primary_color: '#973d8f', description: 'Branding, comunicación y contenido de marca.', access_code: '9003' },
+];
+
+/**
+ * El equipo del ejemplo.
+ *
+ * Sin esta lista, el selector de perfil salía vacío y el hilo de comentarios
+ * quedaba bloqueado sin que hubiera nada que elegir. Son personas de mentira
+ * para un hub de mentira: sirven para recorrer el flujo, no para firmar nada.
+ */
+export const demoEquipo = [
+  { email: 'santiago@ejemplo.local', nombre: 'Santiago (ejemplo)' },
+  { email: 'manuel@ejemplo.local', nombre: 'Manuel (ejemplo)' },
+  { email: 'visitante@ejemplo.local', nombre: 'Visitante (ejemplo)' },
 ];
 
 export const demoIdeas: Idea[] = [

@@ -3,7 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { quienEs } from '@/lib/quien-es';
 import { DEMO_MODE, SupabaseNotConfiguredError } from './demo-mode';
-import { demoIdeas, demoProjects, getDemoIdea, getDemoProject } from './demo-data';
+import { demoEquipo, demoIdeas, demoProjects, getDemoIdea, getDemoProject } from './demo-data';
+import {
+  ideasDemo as ideasDemoGuardadas,
+  ideaDemo as ideaDemoGuardada,
+  comentariosDemo,
+} from './demo-store';
 import { clienteEsVisible, clienteExiste } from './projects';
 import { catalogoIncluye } from './config';
 
@@ -386,7 +391,14 @@ export async function getResponsables(ideas: { id: string; created_by?: string |
 
 export async function getIdeas(projectId: string) {
   const supabase = await createServiceClient() ?? await createClient();
-  if (!supabase) { requireSupabase(); return demoIdeas; }
+  if (!supabase) {
+    requireSupabase();
+    // MEDIDO 2026-11-09: en modo ejemplo el tablero solo enseñaba las
+    // fixtures, y las piezas creadas en la corrida local desaparecían al
+    // recargar. Ahora el cuaderno local (`.data/demo/`) también cuenta.
+    const guardadas = await ideasDemoGuardadas(projectId);
+    return [...guardadas, ...demoIdeas];
+  }
 
   const { data } = await supabase
     .from('rr_hub_ideas')
@@ -503,7 +515,11 @@ async function conPortadas(
 
 export async function getIdea(projectId: string, id: string) {
   const supabase = await createServiceClient() ?? await createClient();
-  if (!supabase) { requireSupabase(); return getDemoIdea(id); }
+  if (!supabase) {
+    requireSupabase();
+    const guardada = await ideaDemoGuardada(id);
+    return guardada ?? getDemoIdea(id);
+  }
 
   const { data } = await supabase
     .from('rr_hub_ideas')
@@ -753,7 +769,17 @@ export async function getAuditProject(slug: string) {
   const sesion = await quienEs();
   if (sesion && !clienteEsVisible(slug, sesion.proyecto)) return null;
   const supabase = await createServiceClient() ?? await createClient();
-  if (!supabase) { requireSupabase(); return null; }
+  if (!supabase) {
+    requireSupabase();
+    // MEDIDO 2026-11-09: sin base, la auditoría devolvía `null` y la página
+    // era un 404 — «auditado» era una palabra vacía. En modo ejemplo se
+    // devuelve el cliente del ejemplo y la auditoría se recorre de verdad.
+    if (DEMO_MODE) {
+      const demo = getDemoProject(slug);
+      return demo ? { ...demo, public_audit: true } : null;
+    }
+    return null;
+  }
   const { data } = await supabase
     .from('rr_hub_projects')
     .select('id, name, slug, client_name, description, brand_primary_color, public_audit')
@@ -775,7 +801,13 @@ export async function getAuditIdeas(projectId: string) {
 
 export async function getAuditIdea(projectId: string, id: string) {
   const supabase = await createServiceClient() ?? await createClient();
-  if (!supabase) { requireSupabase(); return getDemoIdea(id); }
+  if (!supabase) {
+    requireSupabase();
+    // También lo que se creó en la corrida local, para que la auditoría vea lo
+    // mismo que el tablero.
+    const guardada = await ideaDemoGuardada(id);
+    return guardada ?? getDemoIdea(id);
+  }
   const { data } = await supabase
     .from('rr_hub_ideas')
     .select('*')
@@ -858,7 +890,23 @@ export async function getAuditAssets(ideaId: string) {
  */
 export async function getComentarios(ideaId: string) {
   const supabase = await createServiceClient() ?? await createClient();
-  if (!supabase) return [];
+  if (!supabase) {
+    // MEDIDO 2026-11-09: en modo ejemplo el hilo salía siempre vacío, así que
+    // `ENVIAR COMENTARIO` no tenía nada que mostrar y parecía roto. Ahora los
+    // comentarios del cuaderno local se leen igual que los de la base.
+    if (DEMO_MODE) {
+      const guardados = await comentariosDemo(ideaId);
+      return guardados.map((c) => ({
+        id: c.id,
+        text: c.body,
+        author: c.author_label,
+        role: 'colaboracion',
+        createdAt: c.created_at,
+        resolved: Boolean(c.resolved_at),
+      }));
+    }
+    return [];
+  }
   const { data } = await supabase
     .from('rr_hub_comments')
     .select('id, body, author_label, resolved_at, created_at')
@@ -1115,7 +1163,14 @@ export async function getClientesDeLaPersona(): Promise<{
  */
 export async function getEquipoVotante(): Promise<{ email: string; nombre: string }[]> {
   const supabase = await createServiceClient() ?? await createClient();
-  if (!supabase) return [];
+  if (!supabase) {
+    // MEDIDO 2026-11-09: sin base, el equipo salía vacío y el hilo de
+    // comentarios quedaba bloqueado («Elige con qué perfil del equipo
+    // comentas») sin que hubiera ningún perfil que elegir. En modo ejemplo
+    // salen las personas de ejemplo, y el botón de comentar funciona.
+    if (DEMO_MODE) return demoEquipo;
+    return [];
+  }
 
   const { data } = await supabase
     .from('rr_hub_profiles')

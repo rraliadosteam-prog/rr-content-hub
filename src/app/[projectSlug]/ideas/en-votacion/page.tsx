@@ -4,7 +4,13 @@ import { QueueSection } from '@/components/queue-section';
 import { SelectorPerfil } from '@/components/selector-perfil';
 
 /**
- * Lo que está en votación ahora mismo, para el equipo.
+ * La cola de DECISIONES DEL EQUIPO.
+ *
+ * MEDIDO 2026-11-09. La spec v2 pedía renombrar «Votación interna»: el nombre
+ * viejo prometía una votación y lo que hay es una cola con motivo, versión y
+ * siguiente paso. Aquí y en la barra la cola se llama «Decisiones del equipo»,
+ * y el bloque de cada ficha dice lo mismo: son las dos puertas del mismo
+ * sitio.
  *
  * MEDIDO 2026-10-03. Lo que había: en el tablero, quien entraba sin puerta veía
  * un <span> con el texto SOLO LECTURA. No era un botón, no llevaba a ninguna
@@ -30,7 +36,7 @@ export default async function EnVotacion({ params }: { params: Promise<{ project
   if (equipo.length === 0) {
     return (
       <div className="brutal-panel anim-rise p-7">
-        <p className="eyebrow">[{project.name} · VOTACIÓN INTERNA]</p>
+        <p className="eyebrow">[{project.name} · DECISIONES DEL EQUIPO]</p>
         <h1 className="mt-3 font-display text-2xl font-bold text-blanco">No hay nadie habilitado para votar.</h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-blanco-60">
           La pantalla funciona, pero no hay ninguna persona del equipo marcada como
@@ -51,11 +57,11 @@ export default async function EnVotacion({ params }: { params: Promise<{ project
           votación se quedaba sin usar porque para emitir había que abrir el
           perfil del usuario, que era un clic extra entre "quiero votar" y "voté". */}
       <div className="brutal-panel anim-rise mb-6 p-5">
-        <p className="eyebrow">[{project.name} · EQUIPO DE VOTACIÓN]</p>
+        <p className="eyebrow">[{project.name} · EQUIPO]</p>
         <p className="mt-2 text-sm leading-6 text-blanco-60">
-          Elige con qué perfil del equipo vas a emitir tus votos. Se recuerda en
+          Elige con qué perfil del equipo vas a emitir tus decisiones. Se recuerda en
           este navegador y puedes cambiarlo entre ideas. El mínimo para que una
-          votación decida lo pone el dominio, no esta pantalla.
+          decisión se tome lo pone el dominio, no esta pantalla.
         </p>
         <div className="mt-4">
           <SelectorPerfil equipo={equipo} slug={projectSlug} />
@@ -63,10 +69,10 @@ export default async function EnVotacion({ params }: { params: Promise<{ project
       </div>
 
       <QueueSection
-        title="VOTACIÓN INTERNA"
+        title="DECISIONES DEL EQUIPO"
         eyebrow={`${project.name} · ${ideas.length} ${ideas.length === 1 ? 'PIEZA' : 'PIEZAS'}`}
-        description="Estas ideas esperan la decisión del equipo. Cada una se abre con su bloque de votación y el conteo se actualiza solo, sin recargar."
-        owner="EQUIPO RR · INTERNA"
+        description="Estas ideas esperan la decisión del equipo. Cada una se abre con su bloque de decisión y el conteo se actualiza solo, sin recargar."
+        owner="EQUIPO RR · DECISIÓN"
         guide="Elige tu perfil arriba y decide una por una. Sale al cliente la que tenga mayoría a favor con el mínimo de votos; los cambios pedidos devuelven la pieza a revisión interna."
         ideas={ideas}
         projectSlug={projectSlug}

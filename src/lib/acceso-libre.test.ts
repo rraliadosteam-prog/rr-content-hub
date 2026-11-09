@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { esPublica } from './public-rutas';
+
+/** ¿Existe este archivo? */
+function existeArchivo(ruta: string): boolean {
+  try {
+    return statSync(ruta).isFile();
+  } catch {
+    return false;
+  }
+}
 
 /**
  * El codigo de un archivo, SIN los comentarios.
@@ -78,18 +87,28 @@ describe('la puerta del hub se queda abierta', () => {
     expect(c).not.toMatch(/redirect\('\/login'\)/);
   });
 
-  it('no existe la pantalla de login', () => {
-    // Un `existsSync` sobre el repo entero: si alguien vuelve a crear el
-    // directorio, esto falla aunque el archivo no se importe en ninguna parte.
-    const existe = readFileSync(join(process.cwd(), 'package.json'), 'utf8');
-    expect(existe.length).toBeGreaterThan(0);
+  it('la pantalla de login existe y es la puerta por codigo', () => {
+    // MEDIDO 2026-11-09. Este test exigía que NO existiera, porque `/login` era
+    // un «sin destino»: la spec v2 lo declaraba inexistente y no había ni un
+    // enlace que lo llevara.
+    //
+    // Ahora la puerta EXISTE y es la de siempre: cuatro dígitos y tu nombre, la
+    // misma que ya usaba `/api/entrar`. Lo que se comprueba es que la pantalla
+    // use ese camino y no invente otro.
     let hayPantalla = true;
     try {
       readFileSync(join(process.cwd(), 'src/app/login/page.tsx'), 'utf8');
     } catch {
       hayPantalla = false;
     }
-    expect(hayPantalla).toBe(false);
+    expect(hayPantalla, 'la puerta del hub tiene que existir').toBe(true);
+
+    const pagina = codigo('src/app/login/page.tsx');
+    // La lista de clientes sale del servidor (de `rr_hub_projects`), no de una
+    // constante escrita a mano.
+    expect(pagina).toMatch(/getClientesParaLaPuerta/);
+    // Y no se inventa una sesión de Supabase: la puerta es el código.
+    expect(pagina).not.toMatch(/supabase\.auth|signInWith|signIn\(/);
   });
 
   it('la portada no rebota a una pantalla de acceso', () => {
@@ -165,14 +184,13 @@ describe('la puerta del hub se queda abierta', () => {
     expect(c).toMatch(/clienteExiste/);
     expect(c).toMatch(/rr_hub_projects/);
   });
-  it('NINGUN enlace de la interfaz apunta a /login', () => {
-    // El bug medido en produccion con la puerta ya abierta: la barra del cliente
-    // seguia mostrando un boton "INICIAR SESION" que llevaba a `/login`. Un enlace
-    // a una pantalla borrada es un 404 con un texto que promete entrar, que es lo
-    // peor de los dos: la interfaz anuncia algo que no existe.
+  it('todo enlace a /login lleva a una pantalla que existe', () => {
+    // MEDIDO 2026-11-09. Este test prohibia cualquier enlace a `/login` porque
+    // la pantalla estaba borrada: un enlace a una pantalla borrada es un 404
+    // con un texto que promete entrar.
     //
-    // Se recorre el arbol de `src/` y se mira el codigo de cada archivo, no los
-    // comentarios: media explicacion de este cambio menciona `/login`.
+    // Ahora la pantalla existe, y los enlaces a ella son correctos. Lo que se
+    // sigue vigilando es lo de siempre: que el enlace apunte a algo real.
     const raiz = join(process.cwd(), 'src');
     const culpables: string[] = [];
     const recorrer = (dir: string) => {
@@ -181,9 +199,7 @@ describe('la puerta del hub se queda abierta', () => {
         if (entrada.isDirectory()) { recorrer(ruta); continue; }
         if (!/\.(ts|tsx)$/.test(entrada.name)) continue;
         // El propio archivo de test se compara consigo mismo y se declararia
-        // culpable. Y `pwa.test.ts` sigue nombrando `/login` en el texto de un
-        // comentario que explica por que se borro: eso es documentacion, no un
-        // enlace.
+        // culpable.
         if (entrada.name.endsWith('.test.ts') || entrada.name.endsWith('.test.tsx')) continue;
         const limpio = readFileSync(ruta, 'utf8')
           .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -196,7 +212,15 @@ describe('la puerta del hub se queda abierta', () => {
       }
     };
     recorrer(raiz);
-    expect(culpables, `estos archivos enlazan a /login: ${culpables.join(', ')}`).toEqual([]);
+    // Y la pantalla a la que apuntan está de verdad.
+    expect(existeArchivo(join(process.cwd(), 'src/app/login/page.tsx'))).toBe(true);
+    // Los archivos que la enlazan son los esperados: la portada y la barra.
+    for (const culpable of culpables) {
+      expect(
+        ['src/app/page.tsx', 'src/components/workspace-shell.tsx', 'src/app/login/formulario.tsx'],
+        `este archivo enlaza a /login y no se esperaba: ${culpable}`,
+      ).toContain(culpable);
+    }
   });
   it('las lecturas sin sesion NO filtran por cliente', () => {
     // Los dos sitios donde quedaba un filtro de "es el cliente de mi cookie":

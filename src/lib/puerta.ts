@@ -72,6 +72,22 @@ export function puertaDesdeFilas(filas: FilaProyecto[]): ClientePuerta[] {
  * lo dice, en vez de inventar clientes que luego abren en un 404.
  */
 export async function getClientesParaLaPuerta(): Promise<ClientePuerta[]> {
+  const { DEMO_MODE } = await import('./demo-mode');
+  if (DEMO_MODE) {
+    // MEDIDO 2026-11-09: la puerta necesita clientes con código. Sin base de
+    // datos, el ejemplo ofrece los suyos: la puerta se recorre de verdad, con
+    // su código y su lista de personas.
+    const { demoProjects } = await import('./demo-data');
+    return puertaDesdeFilas(
+      demoProjects.map((p) => ({
+        slug: p.slug,
+        name: p.name,
+        brand_primary_color: p.brand_primary_color,
+        access_code: p.access_code,
+      })),
+    );
+  }
+
   const supabase = await createServiceClient();
   if (!supabase) return [];
 

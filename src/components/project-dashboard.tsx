@@ -7,6 +7,7 @@ import { contarEsperas } from '@/lib/esperas';
 import { QUEUES } from '@/lib/queues';
 import { resumenProyecto, seccionesProyecto } from '@/lib/resumen-proyecto';
 import { agruparPorPersona } from '@/lib/quien-tiene-la-pelota';
+import { planPublicacionDe } from '@/lib/social-planning';
 
 type Project = { name: string; client_name: string; description?: string | null };
 
@@ -135,7 +136,13 @@ export function ProjectDashboard({ project, projectSlug, ideas, role, responsabl
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href={`/${projectSlug}/redes`} className="btn-brutal inline-flex items-center gap-2">Plan de publicación <Icon name="publish" size={14} /></Link>
+            {/* MEDIDO 2026-11-09: el botón de «Plan de publicación» salía en
+                todos los clientes, y SÁTIRO y BOGA no tienen plan: el clic
+                terminaba en un 404. Ahora solo se ofrece donde el plan
+                existe, y la pantalla avisa si se llega por URL. */}
+            {planPublicacionDe(projectSlug) ? (
+              <Link href={`/${projectSlug}/redes`} className="btn-brutal inline-flex items-center gap-2">Plan de publicación <Icon name="publish" size={14} /></Link>
+            ) : null}
             <Link href={`/${projectSlug}/ideas`} className="btn-brutal inline-flex items-center gap-2">VER TODO <Icon name="arrow" size={14} /></Link>
           </div>
         </header>

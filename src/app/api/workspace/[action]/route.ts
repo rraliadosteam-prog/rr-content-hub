@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { allowedTransitions, ganoLaVotacion, perdioLaVotacion, estadoVotacion, VOTOS_NECESARIOS, votosParaDecidir, ROLE_LABEL, salidaDeLaVotacion, caidaDeLaVotacion, hayCambioPedido, frenaLaVotacion, salidaDelCambioPedido, DECISIONES_VOTO, type DecisionVoto, type RoleKey, type WorkflowStatus, PUEDE_EDITAR, PUEDE_ESCRIBIR_GUION, PUEDE_COMENTAR, PUEDE_BORRAR, PUEDE_BORRAR_ESTADOS } from '@/lib/flow';
 import { rolEnProyecto } from '@/lib/project-guard';
 import { quienEs } from '@/lib/quien-es';
+import { DEMO_MODE } from '@/lib/demo-mode';
 
 export const dynamic = 'force-dynamic';
 
@@ -297,16 +298,103 @@ export const CABEZA_ORIGEN = 'x-rr-origen';
 const str = (value: unknown, max = 4000) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
 
 /** POST /api/workspace/transition — move an idea between states. */
+
+/**
+ * Las escrituras del modo ejemplo.
+ *
+ * Devuelve `null` cuando la acción no tiene equivalente en el cuaderno local:
+ * en ese caso sigue el camino normal, que sin base responde con su motivo.
+ */
+async function accionEnEjemplo(action: string, body: Body): Promise<NextResponse | null> {
+  const { DEMO_MODE } = await import('@/lib/demo-mode');
+  if (!DEMO_MODE) return null;
+
+  if (action === 'create-idea') {
+    const title = str(body.title, 160);
+    if (title.length < 3) return error('El título necesita al menos 3 caracteres.', 400);
+    const projectSlug = str(body.projectSlug, 60);
+    if (!projectSlug) return error('No se pudo saber el cliente de la idea.', 400);
+    const reference = str(body.referenceUrls ? (body.referenceUrls as string[])[0] : '', 300);
+    if (!reference || !/^https?:\/\//.test(reference)) {
+      return error('Toda idea necesita al menos un link de referencia. Sin referencia no se crea la idea.', 400);
+    }
+    const { crearIdeaDemo } = await import('@/lib/demo-store');
+    const { demoIdeas } = await import('@/lib/demo-data');
+    const idea = await crearIdeaDemo({
+      codigosReservados: demoIdeas.map((i) => i.code),
+      proyecto: projectSlug,
+      title,
+      description: str(body.description, 2000),
+      objective: str(body.objective, 500),
+      contentType: body.contentType === 'paid' ? 'paid' : 'organic',
+      category: str(body.category, 80),
+      reference,
+      camera: str(body.cameraBrief, 1000),
+      talent: str(body.talentBrief, 1000),
+      edit: str(body.editBrief, 1000),
+      script: str(body.script, 8000),
+    });
+    return NextResponse.json({ success: true, id: idea.id, code: idea.code, demo: true });
+  }
+
+  if (action === 'comment') {
+    const text = str(body.body, 4000);
+    if (!text) return error('El comentario está vacío.', 400);
+    const ideaId = str(body.ideaId, 64);
+    if (!ideaId) return error('Falta ideaId.', 400);
+    const identidad = str(body.authorProfile, 200);
+    if (!identidad) return error('Elige con qué perfil comentas antes de publicar.', 400);
+    const { demoEquipo } = await import('@/lib/demo-data');
+    const persona = demoEquipo.find((p) => p.email.toLowerCase() === identidad.trim().toLowerCase());
+    if (!persona) return error('Ese correo no está en la lista del equipo.', 403);
+    const { crearComentarioDemo } = await import('@/lib/demo-store');
+    await crearComentarioDemo({
+      ideaId,
+      body: text,
+      autor: `${persona.nombre} · EQUIPO`,
+      rol: 'EQUIPO',
+    });
+    return NextResponse.json({ success: true, demo: true });
+  }
+
+  if (action === 'resolve-comment') {
+    const commentId = str(body.commentId, 64);
+    if (!commentId) return error('Falta commentId.', 400);
+    const { resolverComentarioDemo } = await import('@/lib/demo-store');
+    const ok = await resolverComentarioDemo(commentId, body.resolved === true);
+    if (!ok) return error('Ese comentario no existe.', 404);
+    return NextResponse.json({ success: true, demo: true });
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const route = request.nextUrl.pathname;
   const action = route.split('/').pop() ?? '';
 
+  let body: Body;
+  try { body = (await request.json()) as Body; } catch { return error('Cuerpo JSON inválido.', 400); }
+
+  /**
+   * MEDIDO 2026-11-09. En modo ejemplo (sin Supabase) TODAS las escrituras
+   * respondían 500 «El servidor no tiene la configuración de Supabase»: crear
+   * una pieza, comentar y resolver un comentario quedaban como botones rotos
+   * en el recorrido local.
+   *
+   * Ahora las tres que el equipo usa todos los días funcionan contra el
+   * cuaderno local (`.data/demo/`), y las demás responden con un motivo
+   * CLARO: no un 500 que no dice nada. La base real no se toca: en modo
+   * ejemplo no hay ninguna.
+   */
+  if (DEMO_MODE) {
+    const respuesta = await accionEnEjemplo(action, body);
+    if (respuesta) return respuesta;
+  }
+
   const ctx = await context(request, action);
   if ('response' in ctx) return ctx.response;
   const { service, supabase, userId, email } = ctx;
-
-  let body: Body;
-  try { body = (await request.json()) as Body; } catch { return error('Cuerpo JSON inválido.', 400); }
 
   // Creating an idea is the one action that has no idea to authorise against,
   // so it is handled before the ideaId requirement. The roster joins it: it also

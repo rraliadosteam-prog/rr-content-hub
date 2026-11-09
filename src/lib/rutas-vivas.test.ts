@@ -34,6 +34,15 @@ function fuente(dir = join(RAIZ)): string[] {
   return out;
 }
 
+/** Existe este archivo. */
+function existeArchivo(ruta: string): boolean {
+  try {
+    return statSync(ruta).isFile();
+  } catch {
+    return false;
+  }
+}
+
 describe('todas las paginas posibles funcionan', () => {
   const archivos = fuente();
 
@@ -42,21 +51,35 @@ describe('todas las paginas posibles funcionan', () => {
     expect(archivos.length).toBeGreaterThan(40);
   });
 
-  it('nadie enlaza /login: esa pantalla no existe', () => {
-    // MEDIDO: en produccion `/login` daba 404 y no habia ni un enlace que lo
-    // llevara. Lo que hay son COMENTARIOS que explican que se borro, y por eso
-    // se lee el codigo pelado.
+  it('la puerta /login existe y es la puerta canónica', () => {
+    // MEDIDO 2026-11-09: `/login` era un «sin destino» — la spec v2 lo
+    // declaraba inexistente y este test prohibía que nadie lo enlazara. Ahora la
+    // puerta existe (es la de código de cuatro dígitos que ya había en
+    // `/api/entrar`) y hay que poder entrar por ella.
     //
-    // Un enlace a `/login` seria un 404 sin explicacion para quien lo pulse.
+    // Lo que se comprueba es que la pantalla exista y que se llegue: un
+    // enlace a una pantalla borrada es un 404 con un texto que promete entrar.
+    expect(existeArchivo(join(RAIZ, 'app/login/page.tsx'))).toBe(true);
+    expect(existeArchivo(join(RAIZ, 'app/login/formulario.tsx'))).toBe(true);
+    const pagina = sinComentarios(readFileSync(join(RAIZ, 'app/login/page.tsx'), 'utf8'));
+    expect(pagina).toMatch(/getClientesParaLaPuerta/);
+    expect(pagina).toMatch(/Formulario/);
+  });
+
+  it('nadie enlaza a una puerta que no existe', () => {
+    // La regla que sigue viva: un enlace tiene que llevar a algo. `/login`
+    // dejó de estar en la lista de prohibidos porque ahora existe.
+    const prohibidas = ['/login-cliente', '/entrar-cliente', '/registro'];
     const culpables: string[] = [];
     for (const abs of archivos) {
       const codigo = sinComentarios(readFileSync(abs, 'utf8'));
-      // href="/login", href={'/login'}, router.push('/login'), redirect('/login')
-      if (/(href|redirect|push|replace)\s*[=(]\s*['"`]\/login\b/.test(codigo)) {
-        culpables.push(relative(REPO, abs));
+      for (const ruta of prohibidas) {
+        if (new RegExp(`(href|redirect|push|replace)\\s*[=(]\\s*['"\`]${ruta}\\b`).test(codigo)) {
+          culpables.push(`${relative(REPO, abs)} -> ${ruta}`);
+        }
       }
     }
-    expect(culpables, `estos enlazan /login: ${culpables.join(', ')}`).toHaveLength(0);
+    expect(culpables, `estos enlazan a una puerta que no existe: ${culpables.join(', ')}`).toHaveLength(0);
   });
 
   it('el manifest tampoco manda a /login', () => {

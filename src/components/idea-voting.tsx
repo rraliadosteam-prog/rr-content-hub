@@ -9,7 +9,12 @@ import { emailElegido, esDelEquipo, perfilElegido, suscribirPerfil } from '@/lib
 import { useVotosEnVivo } from '@/lib/use-votos-vivo';
 
 /**
- * Votación interna de una idea.
+ * La decisión del equipo sobre una idea.
+ *
+ * MEDIDO 2026-11-09: este bloque se llamaba «Votación interna». El nombre viejo
+ * prometía una votación y lo que hay es una decisión con motivo, versión y una
+ * acción siguiente: la cola global (las «Decisiones del equipo») y esta tarjeta
+ * son las dos puertas del mismo sitio.
  *
  * Lo que pidió Santiago: que en la ficha se vea cuántas votaciones lleva la idea
  * antes de subirla, y que el equipo pueda votar. Añadido el 2026-09-28: votar es
@@ -195,7 +200,11 @@ export function IdeaVoting({
   return (
     <div className="border border-blanco-20 p-5 anim-rise" data-guia="votacion">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="mono-label text-blanco-50">// VOTACIÓN INTERNA</p>
+        {/* MEDIDO 2026-11-09: el bloque de la ficha decía «VOTACIÓN INTERNA» y
+            la barra decía «VOTACIÓN INTERNA», mientras la spec v2 pedía
+            «Decisiones del equipo». Ahora los dos lados dicen lo mismo, y el
+            bloque explica que hay motivo, versión y una acción siguiente. */}
+        <p className="mono-label text-blanco-50">// DECISIÓN DEL EQUIPO</p>
         <p className="font-mono text-[10px] text-blanco-50">
           {total === 0 ? 'SIN VOTOS TODAVÍA' : `${total} ${total === 1 ? 'VOTO' : 'VOTOS'}`}
           {/* El número solo no dice si la votación decide. Con el mínimo de tres,

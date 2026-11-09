@@ -62,13 +62,23 @@ describe('lanzador de Google Flow', () => {
     expect(panel).not.toMatch(/data-testid="flow-otra-cuenta"/);
   });
 
-  it('el menú deja Flow junto a las piezas y el material aparte', () => {
+  it('el menú deja Flow con el material y lejos de las piezas', () => {
+    // MEDIDO 2026-11-09: la navegación se agrupó y Flow pasó al grupo
+    // «Estudio», junto a Material y a los editores de foto y video. La
+    // intención del test se sigue cumpliendo: Flow no está pegado a las
+    // piezas, está donde se produce y se entrega el material.
     const piezas = shell.indexOf("path: '/ideas'");
     const flow = shell.indexOf("path: '/flow-ia'");
-    const material = shell.indexOf("path: '/material'");
     expect(piezas).toBeGreaterThan(-1);
     expect(flow).toBeGreaterThan(piezas);
-    expect(material).toBeGreaterThan(flow);
+
+    const estudio = shell.slice(shell.indexOf("titulo: 'Estudio'"), shell.indexOf("titulo: 'Decisiones'"));
+    expect(estudio).toMatch(/path: '\/material'/);
+    expect(estudio).toMatch(/path: '\/flow-ia'/);
+    // Y el grupo de trabajo no lo lleva.
+    const trabajo = shell.slice(shell.indexOf("titulo: 'Trabajo'"), shell.indexOf("titulo: 'Estudio'"));
+    expect(trabajo).not.toMatch(/flow-ia/);
+
     expect(shell).toMatch(/FLOW · IA/);
     expect(shell).toMatch(/MATERIAL/);
   });
