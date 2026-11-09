@@ -171,6 +171,17 @@ test.describe('el recorrido completo del hub', () => {
     } else {
       errores.push('el panel de clip no muestra el aviso «Selecciona un clip»');
     }
+    // Velocidad y transición se ven aun sin una selección; quedan desactivadas
+    // hasta que la persona elige un clip en la línea de tiempo.
+    const velocidad = page.getByLabel('Velocidad');
+    const transicion = page.getByLabel('Transición de entrada');
+    await expect(velocidad).toBeVisible();
+    await expect(transicion).toBeVisible();
+    await expect(velocidad).toBeDisabled();
+    await expect(transicion).toBeDisabled();
+    await page.locator('.est-clip[title^="Aurora RR"]').click();
+    await expect(velocidad).toBeEnabled();
+    await expect(transicion).toBeEnabled();
 
     // El export ofrece los dos formatos.
     await page.getByRole('button', { name: 'Exportar video' }).click();

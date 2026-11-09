@@ -700,10 +700,29 @@ export default function VideoStudio() {
               de que la velocidad y la transición no existían.
             */}
             {tab === 'clip' && !selectedClip ? (
-              <p className="est-muted border-l-4 border-l-mostaza bg-mostaza-05 px-3 py-2" data-testid="estudio-sin-clip">
-                {AVISO_SIN_CLIP}. Toca un clip en la línea de tiempo para cambiar su velocidad, su
-                transición y su recorte.
-              </p>
+              <div className="space-y-3" data-testid="estudio-controles-sin-clip">
+                <p className="est-muted border-l-4 border-l-mostaza bg-mostaza-05 px-3 py-2" data-testid="estudio-sin-clip">
+                  {AVISO_SIN_CLIP}. Toca un clip en la línea de tiempo para cambiar su velocidad, su
+                  transición y su recorte.
+                </p>
+                <Field label="Velocidad">
+                  <input
+                    className="input-brutal w-full opacity-60"
+                    type="range"
+                    min={0.25}
+                    max={4}
+                    step={0.05}
+                    value={1}
+                    aria-label="Velocidad"
+                    disabled
+                  />
+                </Field>
+                <Field label="Transición de entrada">
+                  <select className="input-brutal w-full opacity-60" aria-label="Transición de entrada" disabled value="ninguna">
+                    <option value="ninguna">Elige un clip para configurar</option>
+                  </select>
+                </Field>
+              </div>
             ) : null}
 
             {tab === 'clip' && selectedClip ? (
