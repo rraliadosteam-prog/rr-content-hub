@@ -38,6 +38,7 @@ const PRINCIPAL: readonly { label: string; path: string; help: string; icon: Ico
   { label: 'EL TABLERO', path: '', help: 'Todo el trabajo, de un vistazo', icon: 'map' },
   { label: 'LAS PIEZAS', path: '/ideas', help: 'La lista completa', icon: 'pieces' },
   { label: 'FLOW · IA', path: '/flow-ia', help: 'Fotos y video con IA', icon: 'spark' },
+  { label: 'MATERIAL', path: '/material', help: 'Drive, edición y entrega', icon: 'folder' },
   { label: 'ESPERA RESPUESTA', path: '/aprobaciones', help: 'Lo que hay que decidir', icon: 'decisions' },
   { label: 'EL PLAN', path: '/roadmap', help: 'Cuánto falta para el final', icon: 'roadmap' },
   { label: 'PLAN DE PUBLICACIÓN', path: '/redes', help: 'Feed simulado, orden y aprobación', icon: 'publish' },

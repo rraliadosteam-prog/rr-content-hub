@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { GoogleFlowPanel } from '@/components/google-flow-panel';
 import { getProject } from '@/lib/data';
@@ -24,6 +25,16 @@ export default async function FlowIaPage({ params }: { params: Promise<{ project
         carpetaDrive={process.env.NEXT_PUBLIC_FLOW_DRIVE_FOLDER_URL ?? ''}
         cliente={project.slug}
       />
+      <div className="mx-auto max-w-6xl px-5 pb-16 md:px-10">
+        <Link
+          href={`/${projectSlug}/material`}
+          data-testid="flow-ir-material"
+          className="inline-flex min-h-[44px] items-center gap-2 border border-blanco-40 px-5 py-3 text-center font-display text-sm font-bold uppercase leading-snug tracking-tight text-blanco transition-colors hover:border-blanco hover:bg-blanco-05"
+        >
+          Ir a Material
+          <span className="sr-only">: elegir carpeta de Drive, editar fotos y entregar</span>
+        </Link>
+      </div>
     </main>
   );
 }
