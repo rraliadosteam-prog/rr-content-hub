@@ -32,6 +32,12 @@ async function capturar(page: import('@playwright/test').Page, nombre: string) {
 }
 
 test.describe('el recorrido completo del hub', () => {
+  // El recorrido es largo (puerta + once destinos + ficha + alta + material +
+  // editor de foto + editor de video + Flow + auditoría) y el dev server
+  // compila cada ruta la primera vez. Con los 45 s por defecto de Playwright se
+  // quedaba a medias en una máquina fría.
+  test.setTimeout(240_000);
+
   test('la puerta, la navegación y las secciones', async ({ page }) => {
     const errores: string[] = [];
     // 1280×800: el tamaño de escritorio que pide el encargo.
