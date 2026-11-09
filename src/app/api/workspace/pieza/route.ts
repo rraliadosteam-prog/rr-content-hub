@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { quienEs } from '@/lib/quien-es';
 import { createServiceClient } from '@/lib/supabase/service';
 import { getComentarios, getAssets, getTimeline } from '@/lib/data';
+import { DEMO_MODE } from '@/lib/demo-mode';
+import { comentariosDemo } from '@/lib/demo-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +29,25 @@ export async function GET(request: NextRequest) {
   // pedir el id de una idea de Candilejas devolvería sus comentarios.
   const service = await createServiceClient();
   if (!service) {
+    // MEDIDO 2026-11-09: sin base, este endpoint respondía 500 y el hilo se
+    // quedaba sin recargar nunca. En modo ejemplo se leen los comentarios del
+    // cuaderno local, que es donde se guardaron.
+    if (DEMO_MODE) {
+      const guardados = await comentariosDemo(ideaId);
+      return NextResponse.json({
+        comentarios: guardados.map((c) => ({
+          id: c.id,
+          text: c.body,
+          author: c.author_label,
+          role: 'colaboracion',
+          createdAt: c.created_at,
+          resolved: Boolean(c.resolved_at),
+        })),
+        assets: [],
+        timeline: [],
+        demo: true,
+      });
+    }
     return NextResponse.json({ error: 'El servidor no tiene la configuración de Supabase.' }, { status: 500 });
   }
   const { data: idea } = await service

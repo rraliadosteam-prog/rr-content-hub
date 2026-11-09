@@ -3,6 +3,8 @@ import { NewIdeaForm } from '@/components/new-idea-form';
 import { listarAnuncios, anunciosEnUso } from '@/lib/ad-library-server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { createClient } from '@/lib/supabase/server';
+import { DEMO_MODE } from '@/lib/demo-mode';
+import { getDemoProject } from '@/lib/demo-data';
 
 export async function generateMetadata({ params }: { params: Promise<{ projectSlug: string }> }): Promise<Metadata> {
   const { projectSlug } = await params;
@@ -26,7 +28,14 @@ export default async function NewIdea({ params }: { params: Promise<{ projectSlu
   // Con la clave del servidor: `rr_hub_projects` ya no es legible por el
   // navegador (su tabla tiene los códigos), y esta página es de servidor.
   const supabase = (await createServiceClient()) ?? (await createClient());
-  if (supabase) {
+  if (DEMO_MODE) {
+    // MEDIDO 2026-11-09: sin base, `projectId` quedaba en `null` y el alta
+    // respondía «No se pudo identificar el cliente de esta idea. Recarga la
+    // página» — un mensaje que no dice qué hacer y un botón que no iba a
+    // ningún sitio. En modo ejemplo el cliente es el de la URL.
+    const cliente = getDemoProject(projectSlug);
+    if (cliente) projectId = cliente.id;
+  } else if (supabase) {
     const { data: project } = await supabase
       .from('rr_hub_projects').select('id').eq('slug', projectSlug).maybeSingle();
     if (project) {

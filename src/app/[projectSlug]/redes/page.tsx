@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { SocialPlanningShell } from '@/components/social-planning/social-planning-shell';
 import { getProject } from '@/lib/data';
 import { rolEnProyecto } from '@/lib/project-guard';
@@ -10,7 +10,31 @@ export default async function RedesPage({ params }: { params: Promise<{ projectS
   const { projectSlug } = await params;
   const plan = planPublicacionDe(projectSlug);
 
-  if (!plan) notFound();
+  // MEDIDO 2026-11-09. Antes esto era `notFound()`: SÁTIRO y BOGA, que no
+  // tienen plan de publicación, devolvían un 404 con el cartel de «no
+  // encontrada» — y la barra de navegación los llevaba ahí con un clic. Un 404
+  // no explica nada; lo que se dice aquí es qué pasa y a dónde ir.
+  //
+  // Y con Sátiro ya no siendo cliente activo, su entrada de menú desaparece
+  // (ver el layout del proyecto), así que a esta pantalla se llega con la
+  // URL, no con un enlace roto.
+  if (!plan) {
+    return (
+      <main className="min-h-screen bg-negro text-blanco">
+        <div className="mx-auto grid max-w-3xl gap-4 px-5 py-24">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-mostaza">Plan de publicación</p>
+          <h1 className="display-title">Este cliente no tiene plan de publicación.</h1>
+          <p className="text-base leading-8 text-blanco-70">
+            El plan de publicación es un feed de ejemplo por cliente, y este cliente no lo tiene. No hay
+            nada roto: el trabajo de este cliente se organiza desde su tablero.
+          </p>
+          <Link href={`/${projectSlug}`} className="btn-brutal inline-flex w-fit items-center gap-2">
+            Volver al tablero
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   // NX-1028 paso 3: la matriz de acceso se resuelve AQUÍ, en el servidor, con
   // el mismo `rolEnProyecto` que usa el layout del proyecto. Así lo que pinta

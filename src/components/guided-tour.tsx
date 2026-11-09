@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Icon } from './ui/icons';
 import { reabrirAvisoDeInstalar } from './instalar-app';
+import { EVENTO_EDITOR_ABIERTO } from '@/lib/editor-abierto';
 
 /**
  * Modo guía.
@@ -292,6 +293,25 @@ export function GuidedTour() {
   const abierto = paso !== null;
   const ultimo = paso === pasos.length - 1;
 
+  /**
+   * MEDIDO 2026-11-09: el botón flotante de la guía tapaba el botón
+   * «Guardar versión editada» del editor de foto. Un botón de ayuda que tapa
+   * el botón que hace falta es un botón roto.
+   *
+   * Mientras hay un editor abierto, este botón se aparta. La guía explica los
+   * botones del HUB; el editor se explica solo, y su barra de acciones tiene
+   * que quedar libre para poder guardar.
+   */
+  const [editorAbierto, setEditorAbierto] = useState(false);
+  useEffect(() => {
+    const alAbrir = (evento: Event) => {
+      const detalle = (evento as CustomEvent<{ abierto?: boolean }>).detail;
+      setEditorAbierto(Boolean(detalle?.abierto));
+    };
+    window.addEventListener(EVENTO_EDITOR_ABIERTO, alAbrir);
+    return () => window.removeEventListener(EVENTO_EDITOR_ABIERTO, alAbrir);
+  }, []);
+
   return (
     <>
       {/* Siempre disponible: la guía no se esconde después de la primera vez.
@@ -315,20 +335,23 @@ export function GuidedTour() {
           empezaba en y=808 sobre un viewport de 900 px. La guía sube a
           `sm:bottom-28`; en móvil conserva `bottom-20` porque el aviso está
           oculto allí. */}
-      <button
-        type="button"
-        onClick={() => setPaso(0)}
-        /* MEDIDO 2026-10-03: esto era `bottom-0 left-0 right-0 w-full h-12`, una
-           barra que cruzaba la pantalla entera en el móvil y tapaba el borde
-           inferior de la lista. En un teléfono un botón de ayuda va en su
-           esquina, como en escritorio, y ocupa lo que ocupa. */
-        className="fixed bottom-20 left-3 z-40 inline-flex min-h-[44px] items-center justify-center gap-2 border border-blanco-20 bg-negro px-3 font-mono text-xs text-blanco-70 transition-colors hover:bg-blanco-10 hover:text-blanco sm:bottom-28 sm:left-auto sm:right-4 sm:px-3 sm:py-2"
-        aria-label="Abrir la guía: te explica cada botón"
-        title="¿Cómo se usa?"
-      >
-        <Icon name="eye" size={16} />
-        <span>¿CÓMO SE USA?</span>
-      </button>
+      {!editorAbierto && (
+        <button
+          type="button"
+          onClick={() => setPaso(0)}
+          /* MEDIDO 2026-10-03: esto era `bottom-0 left-0 right-0 w-full h-12`, una
+             barra que cruzaba la pantalla entera en el móvil y tapaba el borde
+             inferior de la lista. En un teléfono un botón de ayuda va en su
+             esquina, como en escritorio, y ocupa lo que ocupa. */
+          className="fixed bottom-20 left-3 z-40 inline-flex min-h-[44px] items-center justify-center gap-2 border border-blanco-20 bg-negro px-3 font-mono text-xs text-blanco-70 transition-colors hover:bg-blanco-10 hover:text-blanco sm:bottom-28 sm:left-auto sm:right-4 sm:px-3 sm:py-2"
+          aria-label="Abrir la guía: te explica cada botón"
+          title="¿Cómo se usa?"
+          data-testid="boton-guia"
+        >
+          <Icon name="eye" size={16} />
+          <span>¿CÓMO SE USA?</span>
+        </button>
+      )}
 
       {/*
         MEDIDO 2026-10-05 (informe del tester): el aviso de instalar se guardaba

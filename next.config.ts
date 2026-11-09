@@ -9,6 +9,12 @@ const scriptSrc = [
   "script-src 'self' 'unsafe-inline'",
   isDevelopment ? "'unsafe-eval'" : "",
   "https://platform.instagram.com",
+  // Google Picker y Google Identity Services (el módulo de material).
+  // El Picker se carga desde `apis.google.com` y el token se pide con
+  // `accounts.google.com`: sin estas dos líneas, elegir carpeta de Drive
+  // falla con un error de CSP que no dice nada de Drive.
+  "https://apis.google.com",
+  "https://accounts.google.com",
 ].filter(Boolean).join(" ");
 
 const securityHeaders = [
@@ -35,12 +41,12 @@ const securityHeaders = [
       // Reference embeds and delivered media come from Supabase and Drive.
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: https:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com",
       // Video previews are iframed, not pictured. Without these the embed is
       // refused and the piece looks broken: the `frame-src` list was Drive and
       // Supabase only, so no social platform could ever load here. Wundeer's
       // sandbox prototype also lives on Railway and is embedded by `/wundeer/redes`.
-      "frame-src 'self' https://www.instagram.com https://instagram.com https://www.tiktok.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.facebook.com https://drive.google.com https://*.supabase.co https://commerce-wundeer-beta.up.railway.app",
+      "frame-src 'self' https://www.instagram.com https://instagram.com https://www.tiktok.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.facebook.com https://drive.google.com https://*.supabase.co https://*.google.com https://commerce-wundeer-beta.up.railway.app",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

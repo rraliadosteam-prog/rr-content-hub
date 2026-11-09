@@ -117,8 +117,8 @@ export default async function Home() {
         </h1>
         <p className="mt-6 max-w-3xl text-base leading-8 text-blanco-70 anim-rise" style={{ animationDelay: '160ms' }}>
           Un solo lugar donde una idea de Wundeer o de Candilejas deja de ser un mensaje suelto
-          y se vuelve un trabajo con dueño, fecha y estado. Se entra directo, sin código y sin
-          contraseñas: quien llega sin acceso abre en modo lectura.
+          y se vuelve un trabajo con dueño, fecha y estado. La puerta es el código del cliente:
+          cuatro dígitos y tu nombre, sin correos ni contraseñas.
         </p>
         <p className="mt-5 font-mono text-[11px] leading-6 text-blanco-50 anim-rise" style={{ animationDelay: '200ms' }}>
           {abiertos.length === 1
@@ -290,6 +290,25 @@ export default async function Home() {
         {' '}También puedes ir directo: cada cliente vive en <span className="text-blanco-60">/wundeer</span>,{' '}
         <span className="text-blanco-60">/candilejas</span>.
       </p>
+
+      {/*
+        MEDIDO 2026-11-09: `/login` era un «sin destino» — la spec v2 lo
+        declaraba inexistente y no había ni un enlace que lo llevara. Ahora la
+        puerta existe y es el camino de entrada: cuatro dígitos y tu nombre.
+      */}
+      <div className="mt-8 border border-blanco-20 p-6 md:p-8">
+        <p className="eyebrow text-blanco-50">[LA PUERTA]</p>
+        <h2 className="mt-3 font-display text-2xl font-bold text-blanco md:text-3xl">
+          Entrar con el código de tu cliente
+        </h2>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-blanco-70">
+          Son cuatro dígitos y tu nombre. El código abre el cliente; lo que puedes hacer
+          dentro lo decide tu rol, y ese no cambia con el código.
+        </p>
+        <Link href="/login" className="btn-brutal mt-5 inline-flex min-h-[44px] items-center gap-2">
+          <Icon name="arrow" size={14} /> ENTRAR
+        </Link>
+      </div>
     </div>
   </main>;
 }

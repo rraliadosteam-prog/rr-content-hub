@@ -13,7 +13,7 @@ export type IconName =
   | 'plus' | 'chevron' | 'arrow' | 'clock' | 'link' | 'image' | 'video' | 'stack'
   | 'spark' | 'user' | 'alert' | 'check' | 'close' | 'chart' | 'file' | 'comment'
   | 'upload' | 'target' | 'bolt' | 'eye' | 'pin' | 'pen' | 'scissors' | 'flag'
-  | 'leaf' | 'lock' | 'pulgar-arriba' | 'pulgar-abajo' | 'si-pero' | 'nota';
+  | 'leaf' | 'lock' | 'folder' | 'pulgar-arriba' | 'pulgar-abajo' | 'si-pero' | 'nota';
 
 const PATHS: Record<IconName, ReactNode> = {
   map: <><rect x="3" y="4" width="18" height="16" /><path d="M9 4v16M15 4v16" /></>,
@@ -74,6 +74,9 @@ const PATHS: Record<IconName, ReactNode> = {
   scissors: <><circle cx="6" cy="6" r="2.5" /><circle cx="6" cy="18" r="2.5" /><path d="M8 7.5L20 19M8 16.5L20 5" /></>,
   flag: <><path d="M5 21V4h11l-2 4 2 4H5" /></>,
   leaf: <><path d="M12 3C7 3 3 7 3 12s4 9 9 9 9-4 9-9-4-9-9-9z" /><path d="M12 7v10M8 11l4-4 4 4" /></>,
+  // Carpeta de Drive: la pestaña y el cuerpo se dibujan separados, para que se
+  // lea «carpeta» y no «caja».
+  folder: <><path d="M3 6h6l2 3h10v10H3z" /><path d="M3 9h18" /></>,
 };
 
 export function Icon({ name, size = 16, className, strokeWidth = 2, ...rest }: { name: IconName; size?: number; strokeWidth?: number } & Omit<SVGProps<SVGSVGElement>, 'name'>) {

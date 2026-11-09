@@ -1,4 +1,4 @@
-export type Status = 'draft' | 'pending_approval' | 'approved' | 'in_production' | 'editing' | 'ready_to_publish' | 'published' | 'needs_changes';
+export type Status = 'draft' | 'voting' | 'pending_approval' | 'approved' | 'in_production' | 'editing' | 'ready_to_publish' | 'published' | 'needs_changes';
 
 export type Idea = {
   id: string;
@@ -35,10 +35,34 @@ export type Idea = {
   edit: string;
 };
 
+/**
+ * Los clientes del ejemplo, con su código de puerta.
+ *
+ * MEDIDO 2026-11-09: la puerta (la pantalla `/login`) no existía y no había
+ * forma de entrar a nada. El ejemplo necesita una puerta que funcione de
+ * verdad, y para eso cada cliente tiene su código de cuatro dígitos.
+ *
+ * Los códigos del ejemplo son DEL EJEMPLO (`9xxx`), no los de producción:
+ * una puerta de ejemplo no puede abrir la puerta de verdad. Los de
+ * producción viven en `rr_hub_projects.access_code` y los edita Dirección.
+ */
 export const demoProjects = [
-  { id: 'wundeer', name: 'WUNDEER', client_name: 'Wuundeer · Moda', slug: 'wundeer', brand_primary_color: '#be076d', description: 'Contenido orgánico y pauta para la operación crítica de moda.' },
-  { id: 'satiro', name: 'SÁTIRO', client_name: 'Sátiro Sushi · Gastronomía', slug: 'satiro', brand_primary_color: '#ded116', description: 'Plataforma gastronómica, contenido y conversión local.' },
-  { id: 'boga', name: 'BOGA', client_name: 'BOGA · Marca', slug: 'boga', brand_primary_color: '#973d8f', description: 'Branding, comunicación y contenido de marca.' },
+  { id: 'wundeer', name: 'WUNDEER', client_name: 'Wuundeer · Moda', slug: 'wundeer', brand_primary_color: '#be076d', description: 'Contenido orgánico y pauta para la operación crítica de moda.', access_code: '9001' },
+  { id: 'satiro', name: 'SÁTIRO', client_name: 'Sátiro Sushi · Gastronomía', slug: 'satiro', brand_primary_color: '#ded116', description: 'Plataforma gastronómica, contenido y conversión local.', access_code: '9002' },
+  { id: 'boga', name: 'BOGA', client_name: 'BOGA · Marca', slug: 'boga', brand_primary_color: '#973d8f', description: 'Branding, comunicación y contenido de marca.', access_code: '9003' },
+];
+
+/**
+ * El equipo del ejemplo.
+ *
+ * Sin esta lista, el selector de perfil salía vacío y el hilo de comentarios
+ * quedaba bloqueado sin que hubiera nada que elegir. Son personas de mentira
+ * para un hub de mentira: sirven para recorrer el flujo, no para firmar nada.
+ */
+export const demoEquipo = [
+  { email: 'santiago@ejemplo.local', nombre: 'Santiago (ejemplo)' },
+  { email: 'manuel@ejemplo.local', nombre: 'Manuel (ejemplo)' },
+  { email: 'visitante@ejemplo.local', nombre: 'Visitante (ejemplo)' },
 ];
 
 export const demoIdeas: Idea[] = [
@@ -53,6 +77,10 @@ export const demoIdeas: Idea[] = [
   { id: '9', code: 'O9', title: 'Humor de pertenencia', description: 'Una situación de identificación alrededor del outfit.', objective: 'Humanizar la marca sin convertirla en una página de memes.', content_type: 'organic', category: 'Humor y memes', status: 'pending_approval', priority: 'normal', creator: 'Manuel', created_at: '2026-08-15', reference_url: 'https://www.instagram.com/p/Dbdq9CGkeFU/', camera: 'Plano simple y legible.', talent: 'Expresión clara y breve.', edit: 'Timing y texto breve.' },
   { id: '10', code: 'P1', title: 'Asesoría visual → WhatsApp', description: 'Producto y fit visibles desde el primer segundo.', objective: 'Llevar a la persona a pedir asesoría directa por WhatsApp.', content_type: 'paid', category: 'Conversión', status: 'ready_to_publish', priority: 'high', creator: 'Santiago', created_at: '2026-08-16', camera: 'Plano entero + detalles con luz controlada.', talent: 'Mostrar frente, lado y espalda.', edit: 'Mensaje claro en 2–3 s y CTA WhatsApp.' },
   { id: '11', code: 'P2', title: 'Tres objeciones, una prenda', description: 'Responder dudas de talla, fit y material.', objective: 'Reducir fricción antes de iniciar conversación comercial.', content_type: 'paid', category: 'Conversión', status: 'pending_approval', priority: 'high', creator: 'Santiago', created_at: '2026-08-16', camera: 'Plano medio con inserts de producto.', talent: 'Hablar a cámara con claridad.', edit: 'Subtítulos y cortes de respuesta.' },
+  // MEDIDO 2026-11-09. Ninguna pieza de ejemplo estaba en `voting`, así que la
+  // cola de «Decisiones del equipo» salía vacía y la tarjeta de decisión de la
+  // ficha no se veía nunca. Con esta pieza, la cola y la tarjeta se recorren.
+  { id: '13', code: 'O10', title: 'Corte de price en cámara lenta', description: 'Un solo corte, a cámara lenta, con el precio sobreimpreso al final.', objective: 'Probar el gesto de precio sin recargar el feed.', content_type: 'organic', category: 'Producto y tela', status: 'voting', priority: 'high', creator: 'Santiago', created_at: '2026-08-18', reference_url: 'https://www.instagram.com/reel/DWU8xF5PlHd/', camera: '50/60 fps, plano entero y detalle de la etiqueta.', talent: 'Mano y rostro, sin actuación.', edit: 'Corte limpio al final y precio sobreimpreso.' },
   { id: '12', code: 'P3', title: 'Prueba social de fit', description: 'Variaciones de cuerpo y caída real.', objective: 'Aumentar confianza mostrando fit en contexto.', content_type: 'paid', category: 'Prueba social', status: 'approved', priority: 'normal', creator: 'Santiago', created_at: '2026-08-17', camera: 'Planos comparables y luz uniforme.', talent: 'Dos perfiles de talla.', edit: 'Comparación directa, sin sobretexto.' },
 ];
 
