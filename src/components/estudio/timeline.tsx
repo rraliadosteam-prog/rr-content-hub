@@ -190,7 +190,20 @@ export default function Timeline({
             ))}
           </div>
 
-          <div ref={tracksRef}>
+          {/*
+            MEDIDO 2026-11-09: no había forma de QUITAR la selección sin
+            borrar el clip (la tecla Supr lo elimina). El aviso «Selecciona un
+            clip» era, por tanto, un estado al que no se podía llegar.
+            Ahora, un clic en el fondo de la línea de tiempo deselecciona.
+          */}
+          <div
+            ref={tracksRef}
+            onPointerDown={(evento) => {
+              const destino = evento.target as HTMLElement | null;
+              if (destino?.closest('.est-clip')) return;
+              onSelect(null, null);
+            }}
+          >
             <div className="est-track-row">
               <div className="est-track-head">TXT</div>
               {project.texts.map((t) => (

@@ -26,8 +26,13 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request): Promise<NextResponse> {
   if (DEMO_MODE) {
+    // MEDIDO 2026-11-09: en modo ejemplo la lista salía vacía y el selector
+    // de perfil de la barra decía «SIN EQUIPO DE VOTACIÓN CONFIGURADO»: un
+    // botón que no podía hacer nada. Con la lista de ejemplo, el selector
+    // funciona y el hilo de comentarios se puede usar.
+    const { demoEquipo } = await import('@/lib/demo-data');
     return NextResponse.json(
-      { equipo: [], clientes: [], demo: true },
+      { equipo: demoEquipo, clientes: [], demo: true },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   }
