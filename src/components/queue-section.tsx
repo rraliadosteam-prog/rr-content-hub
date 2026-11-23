@@ -27,7 +27,7 @@ function ageOf(idea: any): number | null {
  * completitud de la información y responsable. Así una pieza se reconoce igual
  * en el tablero, en la lista y en su cola — sin reaprender nada por pantalla.
  */
-export function QueueSection({ title, eyebrow, description, guide, ideas, projectSlug, empty, showPipeline = false, notice }: {
+export function QueueSection({ title, eyebrow, description, guide, owner, ideas, projectSlug, empty, showPipeline = false, notice }: {
   title: string; eyebrow: string; description: string; owner: string; guide: string;
   ideas: any[]; projectSlug: string; empty: string; showPipeline?: boolean;
   /** Aviso honesto cuando esta pantalla depende de algo que todavía no existe. */
@@ -78,6 +78,7 @@ export function QueueSection({ title, eyebrow, description, guide, ideas, projec
         <div>
           <p className="mono-label text-blanco-50">[QUÉ PASA AQUÍ]</p>
           <p className="mt-2 text-sm leading-6 text-blanco-70">{guide}</p>
+          <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-mostaza">RESPONSABLE · {owner}</p>
         </div>
       </section>
 

@@ -303,6 +303,8 @@ export default async function IdeaDetail({ params }: { params: Promise<{ project
             talent: idea.talent,
             edit: idea.edit,
             references: referencias,
+            publishedUrl: idea.published_url,
+            metrics: idea.metrics,
           }}
         />
       </div>
