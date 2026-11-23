@@ -15,7 +15,15 @@ La conexión original no se rehízo desde cero: se recuperó en el historial del
 | Exportación | PNG/JPG | WebM/MP4 | `compose.ts`, `export.ts`, `render.ts` |
 | No salir del Hub | ✅ | ✅ | páginas Next renderizan el componente dentro del shell |
 
-Recorrido real ejecutado en local: abrir Hub → `EDITAR FOTO` → probar carga/ajuste/exportación → volver al menú → `EDITAR VIDEO` → añadir clip → cortes/controles → exportación. Las capturas de la corrida anterior están en `visual-review/foto.png` y `visual-review/video.png`; la prueba automatizada de rutas está en `e2e/recorrido-hub.spec.ts`.
+Recorrido verificable en el head del PR (demo local, 2026-11-23): las cuatro rutas respondieron HTTP 200; clics reales Hub → Material, Hub → `EDITAR FOTO`, Hub → `EDITAR VIDEO`, botón `Recortar` y botón `Cortar` fueron aceptados. Esto prueba navegación y apertura de controles, no una exportación completa con archivo real.
+
+| Control | Head actual | Evidencia | Estado |
+|---|---:|---|---|
+| Abrir editor foto desde Hub | ✅ | captura `visual-review-2026-11-23/editor-foto.png` + clic navegable | Verificado |
+| Abrir editor video desde Hub | ✅ | captura `visual-review-2026-11-23/editor-video.png` + clic navegable | Verificado |
+| Carga de archivo real | — | no se subió un archivo durante esta corrida demo | Pendiente |
+| Recorte / corte | ✅ apertura | clic real en `Recortar` / `Cortar`; no se guardó un archivo | Parcial |
+| Exportación | — | botones existen en el código y las capturas; no se descargó binario | Pendiente |
 
 ## Reestructuración
 
@@ -34,7 +42,7 @@ La evidencia visual versionada está en `visual-review/`:
 - `e2e/escritorio-01-portada.png` a `e2e/escritorio-04-tablero.png`: recorrido de escritorio versionado hasta el tablero.
 - Las capturas específicas de editor disponibles son `foto.png`, `video.png` y `e2e/celular-05-editor-foto.png` / `e2e/celular-06-editor-video.png`; las capturas de escritorio 09–11 todavía no están versionadas.
 
-La comparación lado a lado se puede reproducir sin una cuenta externa: `b02d630` es el commit que recupera los módulos profesionales de Craft Everything y la rama de integración usa esos mismos archivos, no una implementación alternativa. La matriz de arriba compara cada capacidad contra el código y el recorrido real. No se afirma una comparación pixel a pixel con Craft Everything porque el repo no conserva una segunda URL autenticada del editor original.
+`b02d630` es el commit original recuperado y el head actual conserva los mismos componentes de estudio; la comparación de código se verificó con `git diff b02d630..HEAD -- src/components/estudio src/lib/estudio`. No se declara una comparación visual lado a lado contra `b02d630`: el worktree histórico no pudo levantar el servidor en esta corrida por dependencias aisladas/Turbopack, y el repo no conserva una segunda URL autenticada de Craft Everything. Por tanto, “original recuperado” y “servicio externo Craft” no se tratan como equivalentes.
 
 ## Comprobaciones
 
@@ -45,9 +53,18 @@ npm run typecheck
 npm run lint
 npm test -- --run
 npm run build
-npm run test:e2e -- e2e/recorrido-hub.spec.ts
+npm run test:e2e -- e2e/recorrido-hub.spec.ts # requiere HUB_SECRET/entorno estable
 ```
 
 No se hizo merge ni despliegue. La matriz de funciones externas de Craft Everything queda limitada a lo que el repositorio conserva: no se dispone de una segunda URL autenticada de Craft para comparar pixel a pixel fuera del Hub.
 
-En esta actualización, la suite enfocada de editores/acceso pasó: `3` archivos y `23` pruebas (`src/lib/estudio/estudio.test.ts`, `src/lib/material-ui.test.ts`, `src/lib/demo-mode-production.test.ts`). El intento global y `typecheck` quedaron sin salida dentro del entorno de trabajo y se detuvieron por tiempo; no se reportan como aprobados. El E2E completo requiere `HUB_SECRET`; con una clave efímera llegó a ejecutar la puerta y varias pantallas, pero el proceso de desarrollo se cerró antes de terminar el recorrido, por lo que queda pendiente de un entorno estable. El spec reproducible es `e2e/recorrido-hub.spec.ts`.
+En la actualización 2026-11-23: `npm run typecheck` OK, `npm run lint` OK, `npm test -- --run` pasó con `78` archivos y `711` pruebas, y `npm run build` OK (con avisos de variables Supabase ausentes en demo). El E2E completo no se declara verde: requiere `HUB_SECRET` y sesión estable. La ruta protegida de Métricas está verificada por código y pruebas de acceso, pero no se probó con dos cuentas reales en navegador.
+
+## Responsive, márgenes e instalación
+
+| Requisito | Estado | Motivo |
+|---|---|---|
+| Escritorio | Verificado | capturas `visual-review/` y build de todas las rutas |
+| Móvil 360 px sin overflow | Pendiente | existen capturas móviles versionadas, pero esta corrida no pudo completar la medición automatizada de `scrollWidth` |
+| Márgenes / pie y controles flotantes | Verificado por código | `globals.css` y `InstalarApp`; no se afirma prueba pixel-perfect externa |
+| Un único control de instalación | Verificado por código | búsqueda de `InstalarApp` y documentación del PR; no se afirma un E2E completo |
