@@ -31,7 +31,8 @@ La evidencia visual versionada está en `visual-review/`:
 
 - `foto.png` y `video.png`: vista de los dos editores dentro del Hub.
 - `e2e/celular-05-editor-foto.png` y `e2e/celular-06-editor-video.png`: recorrido móvil.
-- `e2e/escritorio-09-editor-foto.png`, `e2e/escritorio-10-editor-video.png` y `e2e/escritorio-11-export-video.png`: carga, controles y exportación.
+- `e2e/escritorio-01-portada.png` a `e2e/escritorio-04-tablero.png`: recorrido de escritorio versionado hasta el tablero.
+- Las capturas específicas de editor disponibles son `foto.png`, `video.png` y `e2e/celular-05-editor-foto.png` / `e2e/celular-06-editor-video.png`; las capturas de escritorio 09–11 todavía no están versionadas.
 
 La comparación lado a lado se puede reproducir sin una cuenta externa: `b02d630` es el commit que recupera los módulos profesionales de Craft Everything y la rama de integración usa esos mismos archivos, no una implementación alternativa. La matriz de arriba compara cada capacidad contra el código y el recorrido real. No se afirma una comparación pixel a pixel con Craft Everything porque el repo no conserva una segunda URL autenticada del editor original.
 
