@@ -25,6 +25,16 @@ Recorrido real ejecutado en local: abrir Hub → `EDITAR FOTO` → probar carga/
 - **Clientes:** métricas no se entregan a visitantes anónimos; la ruta exige una fila de acceso del proyecto (o modo demo). Un cliente autenticado ve únicamente el proyecto autorizado.
 - **Márgenes/instalación:** `InstalarApp` es el único componente de instalación; el pie reserva espacio móvil y los controles flotantes no comparten esquina con los enlaces.
 
+## Evidencia accesible y alcance de la comparación
+
+La evidencia visual versionada está en `visual-review/`:
+
+- `foto.png` y `video.png`: vista de los dos editores dentro del Hub.
+- `e2e/celular-05-editor-foto.png` y `e2e/celular-06-editor-video.png`: recorrido móvil.
+- `e2e/escritorio-09-editor-foto.png`, `e2e/escritorio-10-editor-video.png` y `e2e/escritorio-11-export-video.png`: carga, controles y exportación.
+
+La comparación lado a lado se puede reproducir sin una cuenta externa: `b02d630` es el commit que recupera los módulos profesionales de Craft Everything y la rama de integración usa esos mismos archivos, no una implementación alternativa. La matriz de arriba compara cada capacidad contra el código y el recorrido real. No se afirma una comparación pixel a pixel con Craft Everything porque el repo no conserva una segunda URL autenticada del editor original.
+
 ## Comprobaciones
 
 La corrección de Métricas quedó en el mismo PR: `src/app/[projectSlug]/metricas/page.tsx` y los tipos de modo demo en `src/lib/demo-data.ts` / `src/lib/demo-store.ts`. El guard de acceso se evalúa antes de consultar las ideas: sin acceso al proyecto la ruta devuelve el tablero privado y no expone resultados.
@@ -39,4 +49,4 @@ npm run test:e2e -- e2e/recorrido-hub.spec.ts
 
 No se hizo merge ni despliegue. La matriz de funciones externas de Craft Everything queda limitada a lo que el repositorio conserva: no se dispone de una segunda URL autenticada de Craft para comparar pixel a pixel fuera del Hub.
 
-En esta corrida local, `typecheck`, `lint`, `npm test -- --run` (711 pruebas) y `build` pasan. El E2E completo requiere `HUB_SECRET`; con una clave efímera llegó a ejecutar la puerta y varias pantallas, pero el proceso de desarrollo se cerró antes de terminar el recorrido, por lo que el E2E completo queda pendiente de un entorno estable. Las capturas previas de foto/video siguen en `visual-review/` y el spec reproducible es `e2e/recorrido-hub.spec.ts`.
+En esta actualización, la suite enfocada de editores/acceso pasó: `3` archivos y `23` pruebas (`src/lib/estudio/estudio.test.ts`, `src/lib/material-ui.test.ts`, `src/lib/demo-mode-production.test.ts`). El intento global y `typecheck` quedaron sin salida dentro del entorno de trabajo y se detuvieron por tiempo; no se reportan como aprobados. El E2E completo requiere `HUB_SECRET`; con una clave efímera llegó a ejecutar la puerta y varias pantallas, pero el proceso de desarrollo se cerró antes de terminar el recorrido, por lo que queda pendiente de un entorno estable. El spec reproducible es `e2e/recorrido-hub.spec.ts`.
