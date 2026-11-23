@@ -21,11 +21,13 @@ Recorrido real ejecutado en local: abrir Hub → `EDITAR FOTO` → probar carga/
 
 - **Producción:** la cola usa `ProductionPipeline` y muestra solo piezas en producción; el acceso queda directo en el grupo Trabajo.
 - **Aprobaciones:** la cola muestra el estado, la antigüedad y ahora también `RESPONSABLE` de la decisión (cliente/equipo según la fase).
-- **Métricas:** cada ficha permite guardar URL publicada, alcance, interacciones, conversiones y nota/fuente. La pantalla de métricas lee esos datos y deja claro lo que aún no tiene registro.
+- **Métricas:** cada ficha permite guardar URL publicada, alcance, interacciones, conversiones y nota/fuente. `src/app/[projectSlug]/metricas/page.tsx` ahora renderiza una tarjeta por publicación publicada, con enlace, los tres resultados y la nota/fuente; los vacíos se muestran como `—` y no como cero.
 - **Clientes:** métricas no se entregan a visitantes anónimos; la ruta exige una fila de acceso del proyecto (o modo demo). Un cliente autenticado ve únicamente el proyecto autorizado.
 - **Márgenes/instalación:** `InstalarApp` es el único componente de instalación; el pie reserva espacio móvil y los controles flotantes no comparten esquina con los enlaces.
 
 ## Comprobaciones
+
+La corrección de Métricas quedó en el mismo PR: `src/app/[projectSlug]/metricas/page.tsx` y los tipos de modo demo en `src/lib/demo-data.ts` / `src/lib/demo-store.ts`. El guard de acceso se evalúa antes de consultar las ideas: sin acceso al proyecto la ruta devuelve el tablero privado y no expone resultados.
 
 ```text
 npm run typecheck
@@ -36,3 +38,5 @@ npm run test:e2e -- e2e/recorrido-hub.spec.ts
 ```
 
 No se hizo merge ni despliegue. La matriz de funciones externas de Craft Everything queda limitada a lo que el repositorio conserva: no se dispone de una segunda URL autenticada de Craft para comparar pixel a pixel fuera del Hub.
+
+En esta corrida local, `typecheck`, `lint`, `npm test -- --run` (711 pruebas) y `build` pasan. El E2E completo requiere `HUB_SECRET`; con una clave efímera llegó a ejecutar la puerta y varias pantallas, pero el proceso de desarrollo se cerró antes de terminar el recorrido, por lo que el E2E completo queda pendiente de un entorno estable. Las capturas previas de foto/video siguen en `visual-review/` y el spec reproducible es `e2e/recorrido-hub.spec.ts`.

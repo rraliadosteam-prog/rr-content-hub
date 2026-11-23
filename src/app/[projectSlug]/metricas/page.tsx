@@ -6,11 +6,23 @@ import { todasLasGraficas } from '@/lib/graficas';
 import { inQueue } from '@/lib/queues';
 import { DEMO_MODE } from '@/lib/demo-mode';
 
-/**
- * This page used to be a byte-for-byte copy of `publicaciones` with different
- * copy: same queue, same filter, and it computed no metric at all. It now shows
- * the real counts, which is the only thing "MÉTRICAS" can honestly claim today.
- */
+type Metricas = {
+  alcance?: number | null;
+  interacciones?: number | null;
+  conversiones?: number | null;
+  nota?: string | null;
+};
+
+function numero(value: number | null | undefined) {
+  return value === null || value === undefined ? '—' : new Intl.NumberFormat('es-CO').format(value);
+}
+
+function tieneMetricas(metrics: unknown): metrics is Metricas {
+  if (!metrics || typeof metrics !== 'object' || Array.isArray(metrics)) return false;
+  const value = metrics as Record<string, unknown>;
+  return ['alcance', 'interacciones', 'conversiones', 'nota'].some((key) => value[key] !== null && value[key] !== undefined && value[key] !== '');
+}
+
 export default async function Metrics({ params }: { params: Promise<{ projectSlug: string }> }) {
   const { projectSlug } = await params;
   const { project, access } = await getProject(projectSlug); if (!project) notFound();
@@ -31,6 +43,7 @@ export default async function Metrics({ params }: { params: Promise<{ projectSlu
   const published = ideas.filter((i) => i.status === 'published');
   const organic = published.filter((i) => i.content_type === 'organic');
   const paid = published.filter((i) => i.content_type === 'paid');
+  const conResultados = published.filter((idea) => idea.published_url || tieneMetricas(idea.metrics));
   const byPillar = new Map<string, number>();
   for (const idea of published) {
     const key = idea.category || 'Sin categoría';
@@ -43,14 +56,14 @@ export default async function Metrics({ params }: { params: Promise<{ projectSlu
     <QueueSection
       title="MÉTRICAS"
       eyebrow={`${project.name} · PERFORMANCE_LOOP`}
-      description="Cuenta lo que sí se puede contar hoy: cuántas piezas salieron, de qué tipo y de qué categoría. El rendimiento (alcance, interacción, conversión) no se mide todavía porque ninguna tabla lo registra."
+      description="Muestra qué piezas salieron y, cuando el equipo registra el corte, el resultado de cada publicación. RR y el cliente autorizado ven solo este proyecto."
       owner="MEDIA BUYER · OWNER DEL PROYECTO"
-      guide="Esta pantalla mide lo que existe en la base: piezas publicadas y su reparto. La URL de salida, la fecha y los resultados se registran en cada ficha (columnas published_url, due_at y metrics, MEDIDAS el 2026-10-01: existen y funcionan). Lo que no hay todavía es quién los carga: eso es trabajo del equipo, no una limitación de la base."
+      guide="Cada ficha permite registrar la URL publicada, alcance, interacciones, conversiones y nota/fuente. Esta pantalla reúne esos datos por pieza; los valores vacíos significan que aún no se ha cargado ese corte."
       ideas={ideas}
       projectSlug={projectSlug}
       empty="No hay publicaciones registradas todavía. Cuando la primera pieza salga, aquí se cuenta."
     />
-    {published.length > 0 && <section className="mx-auto mt-4 max-w-7xl px-5 md:px-10">
+    {published.length > 0 && <section className="mx-auto mt-4 max-w-7xl px-5 pb-10 md:px-10">
       <p className="mono-label text-blanco-50">[LO QUE SÍ PODEMOS MEDIR HOY]</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         {[['PUBLICADAS', published.length], ['ORGÁNICO', organic.length], ['PAUTA', paid.length]].map(([label, n]) => (
@@ -71,10 +84,33 @@ export default async function Metrics({ params }: { params: Promise<{ projectSlu
           ))}
         </ul>
       </div>}
-      <p className="mt-4 border-l-4 border-blanco-20 bg-blanco-05 p-4 text-xs leading-6 text-blanco-60">
-        Alcance, interacción y conversión no se miden todavía: ninguna tabla registra
-        ese dato. Hasta que exista, esta página solo cuenta piezas, no rendimiento.
-      </p>
+      <div className="mt-4 border border-blanco-20 bg-blanco-05 p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <p className="mono-label text-blanco-50">[RESULTADO POR PUBLICACIÓN]</p>
+            <p className="mt-2 text-xs leading-6 text-blanco-60">{conResultados.length} de {published.length} piezas tienen URL o resultados registrados.</p>
+          </div>
+          <span className="font-mono text-[10px] text-blanco-50">VISIBLE PARA RR · CLIENTE DE ESTE PROYECTO</span>
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {published.map((idea) => {
+            const metricas = (tieneMetricas(idea.metrics) ? idea.metrics : {}) as Metricas;
+            return <article key={idea.id} className="border border-blanco-15 bg-negro p-4" data-testid="metricas-publicacion">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] text-mostaza">{idea.code}</p>
+                  <h2 className="mt-1 font-display text-lg font-bold text-blanco">{idea.title}</h2>
+                </div>
+                {idea.published_url ? <a href={idea.published_url} target="_blank" rel="noreferrer" className="btn-brutal shrink-0 text-xs">ABRIR PUBLICACIÓN ↗</a> : <span className="font-mono text-[10px] text-blanco-40">SIN URL</span>}
+              </div>
+              <dl className="mt-4 grid grid-cols-3 gap-2">
+                {[['ALCANCE', metricas.alcance], ['INTERACCIONES', metricas.interacciones], ['CONVERSIONES', metricas.conversiones]].map(([label, value]) => <div key={String(label)} className="border border-blanco-10 p-3"><dt className="font-mono text-[9px] text-blanco-50">{label}</dt><dd className="mt-1 font-display text-xl font-bold text-blanco">{numero(value as number | null | undefined)}</dd></div>)}
+              </dl>
+              {metricas.nota && <p className="mt-3 border-l-2 border-mostaza px-3 text-xs leading-5 text-blanco-70">FUENTE / NOTA · {metricas.nota}</p>}
+            </article>;
+          })}
+        </div>
+      </div>
     </section>}
   </>;
 }

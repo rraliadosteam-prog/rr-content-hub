@@ -41,6 +41,7 @@ export type IdeaDemo = {
   ad_id: string | null;
   due_at: string | null;
   published_url: string | null;
+  metrics?: { alcance?: number | null; interacciones?: number | null; conversiones?: number | null; nota?: string | null };
   aFavor: number;
   enContra: number;
   reference_url: string;
