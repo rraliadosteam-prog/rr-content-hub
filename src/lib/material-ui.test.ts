@@ -39,10 +39,10 @@ describe('módulo de material', () => {
   });
 
   it('el video se edita en el editor de video del hub, no en el de foto', () => {
-    // MEDIDO 2026-11-09. Antes el video de Material era un «Próximamente» y
-    // el editor de foto era el único editor. Con los editores de la misión B
-    // integrados en el hub, el video tiene destino: la sección «Editar video».
-    expect(panel).toMatch(/editar\/video/);
+    // MEDIDO 2026-11-25. Antes el video de Material era un «Próximamente» y
+    // el editor de foto era el único editor. Ahora los dos tipos de archivo
+    // abren su editor profesional con el puente de Drive, sin «Próximamente».
+    expect(panel).toMatch(/material-editar-video-/);
     expect(panel).not.toMatch(/Video · Próximamente/);
     // El editor de FOTO sigue sin ser un editor de video: no tiene etiqueta de
     // video, ni tipo de video, ni captura de video.

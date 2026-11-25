@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { NextResponse, type NextRequest } from 'next/server';
 import {
   CAMPOS_ARCHIVO,
@@ -9,7 +11,12 @@ import {
   cuentaGoogleDe,
   idDriveValido,
 } from '@/lib/drive';
-import { ARCHIVOS_DEMO, CARPETAS_DEMO, CUENTA_GOOGLE_DEMO } from '@/lib/material-demo';
+import {
+  agregarArchivoDemo,
+  archivosDemoActuales,
+  CARPETAS_DEMO,
+  CUENTA_GOOGLE_DEMO,
+} from '@/lib/material-demo';
 import { TAMANO_MAX_ENTREGA } from '@/lib/material';
 import { checkDbLimit, recordDbFailure, recordDbSuccess, retryAfterDb } from '../../_lib/rate-limit-db';
 
@@ -122,7 +129,7 @@ async function listar(cuerpo: Record<string, unknown>, token: string | null) {
   const busqueda = typeof cuerpo.busqueda === 'string' ? cuerpo.busqueda : '';
 
   if (!token) {
-    const archivos = ARCHIVOS_DEMO.filter((archivo) => {
+    const archivos = archivosDemoActuales().filter((archivo) => {
       if (carpetaId && archivo.carpetaId !== carpetaId) return false;
       if (busqueda.trim() && !archivo.nombre.toLowerCase().includes(busqueda.trim().toLowerCase())) return false;
       return true;
@@ -166,20 +173,22 @@ async function subir(cuerpo: Record<string, unknown>, token: string | null) {
   if (!bytes.length) return error('El archivo llegó vacío.');
 
   if (!token) {
+    const archivo = {
+      id: `demo-subida-${Date.now().toString(36)}`,
+      nombre,
+      mimeType,
+      tamano: bytes.length,
+      esImagen: mimeType.startsWith('image/'),
+      esVideo: mimeType.startsWith('video/'),
+      carpetaId,
+      modificado: new Date().toISOString(),
+      miniatura: null,
+    };
+    agregarArchivoDemo(archivo);
     return NextResponse.json({
       demo: true,
       mensaje: 'Subida de ejemplo: falta conectar Google.',
-      archivo: {
-        id: `demo-subida-${Date.now().toString(36)}`,
-        nombre,
-        mimeType,
-        tamano: bytes.length,
-        esImagen: mimeType.startsWith('image/'),
-        esVideo: mimeType.startsWith('video/'),
-        carpetaId,
-        modificado: new Date().toISOString(),
-        miniatura: null,
-      },
+      archivo,
     });
   }
 
@@ -218,9 +227,20 @@ async function bajar(cuerpo: Record<string, unknown>, token: string | null) {
   if (!idDriveValido(archivoId)) return error('El archivo no es válido.');
 
   if (!token) {
-    // En modo ejemplo no hay bytes: el navegador pinta una imagen de muestra
-    // con el canvas. Devolver bytes de mentira sería peor que no devolverlos.
-    return NextResponse.json({ demo: true, bytes: null, mimeType: 'image/png' });
+    const esVideoDemo = archivoId === 'demo-archivo-candilejas-02';
+    const ruta = esVideoDemo
+      ? join(process.cwd(), 'public', 'editors', 'rr-motion', 'web-test.mp4')
+      : join(process.cwd(), 'public', 'brand', 'rr-brandmark.png');
+    try {
+      const bytes = await readFile(ruta);
+      return NextResponse.json({
+        demo: true,
+        bytes: bytes.toString('base64'),
+        mimeType: esVideoDemo ? 'video/mp4' : 'image/png',
+      });
+    } catch {
+      return error('El material de ejemplo no está disponible en este preview.', 500);
+    }
   }
 
   const respuesta = await fetch(`${URL_API_DRIVE}/files/${archivoId}?alt=media&supportsAllDrives=true`, {

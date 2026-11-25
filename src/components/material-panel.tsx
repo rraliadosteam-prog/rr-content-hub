@@ -1,9 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/icons';
-import PhotoStudio from '@/components/estudio/photo-studio';
 import {
   AVISO_CLIENTE_AJENO,
   AVISO_TODOS_VEN_TODO,
@@ -18,7 +16,17 @@ import {
 } from '@/lib/material';
 import { MENSAJE_CREDENCIALES_PENDIENTES, type ArchivoDrive, type CuentaGoogle } from '@/lib/drive';
 import { abrirPickerCarpeta, pedirTokenDrive, type CarpetaElegida } from '@/lib/drive-picker';
-import { pintarImagenDeEjemplo } from '@/lib/material-demo';
+import {
+  EDITOR_BRIDGE_VERSION,
+  bytesComoUint8Array,
+  crearNonceEditor,
+  normalizarMensajeEditorGuardado,
+  nombreVersionEditado,
+  protocoloEditorListo,
+  type EditorKind,
+  type EditorProtocol,
+  type EditorSaveMessage,
+} from '@/lib/editor-bridge';
 
 type Cliente = { slug: string; nombre: string };
 
@@ -38,26 +46,51 @@ type Props = {
   eventosIniciales: EventoMaterialFila[];
 };
 
-type Editando = {
-  id: string;
-  nombre: string;
-  mimeType: string;
-  src: string;
-  cliente: string | null;
-};
-
 type Entrega = { enlace: string; vence: string; minutos: number; demo: boolean };
 
+type EditorPendiente = {
+  ventana: Window;
+  editor: EditorKind;
+  protocolo: EditorProtocol | null;
+  nonce: string;
+  archivo: ArchivoDrive;
+  carpetaId: string;
+  bytes: Promise<{ nombre: string; mimeType: string; bytes: ArrayBuffer }>;
+};
+
+function archivoSubidoParaLista(value: unknown): ArchivoDrive | null {
+  if (!value || typeof value !== 'object') return null;
+  const dato = value as Record<string, unknown>;
+  const id = typeof dato.id === 'string' ? dato.id : '';
+  const nombre = typeof dato.nombre === 'string' ? dato.nombre : '';
+  const mimeType = typeof dato.mimeType === 'string' ? dato.mimeType : '';
+  const carpetaId = typeof dato.carpetaId === 'string' ? dato.carpetaId : null;
+  if (!id || !nombre || !mimeType || !carpetaId) return null;
+  const tamano = typeof dato.tamano === 'number' && Number.isFinite(dato.tamano) ? dato.tamano : 0;
+  return {
+    id,
+    nombre,
+    mimeType,
+    tamano,
+    esImagen: mimeType.startsWith('image/'),
+    esVideo: mimeType.startsWith('video/'),
+    carpetaId,
+    modificado: typeof dato.modificado === 'string' ? dato.modificado : new Date().toISOString(),
+    miniatura: typeof dato.miniatura === 'string' ? dato.miniatura : null,
+  };
+}
+
 /**
- * Material: la carpeta de Drive del equipo, la edición de fotos y la entrega.
+ * Material: la carpeta de Drive del equipo, los editores completos y la entrega.
  *
  * LO QUE SE VE AQUÍ
  *
  *   - La carpeta de Drive que elige cada persona (Google Picker, alcance
  *     `drive.file`). Se busca, se baja y se sube dentro de esa carpeta.
- *   - La edición de fotos, dentro del hub y en el navegador.
+ *   - RR Imagen y RR Motion, servidos como aplicaciones completas del hub.
  *   - La entrega: solo la versión final, a almacenamiento privado, con un
- *     enlace firmado que vence.
+ *     enlace firmado que vence. Los guardados del editor vuelven a Drive como
+ *     versiones nuevas y no pisan el original.
  *   - El registro de quién subió, registró y entregó.
  *
  * LO QUE NO SE HACE
@@ -88,10 +121,17 @@ export function MaterialPanel({
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [demo, setDemo] = useState(false);
-  const [editando, setEditando] = useState<Editando | null>(null);
   const [eventos, setEventos] = useState<EventoMaterialFila[]>(eventosIniciales);
   const [entregas, setEntregas] = useState<Record<string, Entrega>>({});
   const [registrados, setRegistrados] = useState<{ material: Material; blob: Blob }[]>([]);
+  const [preview, setPreview] = useState<{ archivo: ArchivoDrive; url: string; mimeType: string } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewUrl = useRef<string | null>(null);
+  const ventanasEditor = useRef(new Map<Window, EditorPendiente>());
+
+  useEffect(() => () => {
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+  }, []);
 
   const slugs = useMemo(() => clientes.map((c) => c.slug), [clientes]);
 
@@ -176,76 +216,81 @@ export function MaterialPanel({
     await listar(carpeta.id, busqueda);
   }
 
-  /** Baja un archivo de Drive (o pinta un ejemplo) y lo abre en el editor. */
-  async function abrirEditor(archivo: ArchivoDrive) {
+  /**
+   * Downloads only the selected file through the server proxy and keeps the
+   * resulting object URL in memory. The Drive token stays in the Authorization
+   * header and is never placed in a preview URL or browser storage.
+   */
+  async function previsualizar(archivo: ArchivoDrive) {
+    setPreviewLoading(true);
     setError('');
-    setAviso('');
     try {
-      let url: string;
-      if (archivo.esVideo) {
-        setAviso('El video se edita en «Editar video», dentro del hub. Ahí se importa el archivo.');
-        return;
-      }
       const respuesta = await fetch('/api/drive/bajar', {
         method: 'POST',
         headers: cabecera(),
         body: JSON.stringify({ archivoId: archivo.id }),
       });
       const datos = await respuesta.json();
-      if (!respuesta.ok) {
-        setError(datos?.error ?? 'No se pudo bajar el archivo.');
-        return;
+      if (!respuesta.ok || typeof datos.bytes !== 'string' || !datos.bytes) {
+        throw new Error(datos?.error ?? 'Drive no entregó el archivo para previsualizar.');
       }
-      if (datos.demo || !datos.bytes) {
-        url = await imagenDeEjemplo(archivo.nombre);
-        setDemo(true);
-      } else {
-        url = URL.createObjectURL(new Blob([bytesDeBase64(datos.bytes)], { type: datos.mimeType ?? archivo.mimeType }));
-      }
-      setEditando({
-        id: archivo.id,
-        nombre: archivo.nombre,
-        mimeType: archivo.mimeType,
-        src: url,
-        cliente: clienteDeNombre(archivo.nombre, slugs),
-      });
-    } catch {
-      setError('No se pudo abrir el archivo.');
+      const mimeType = typeof datos.mimeType === 'string' && datos.mimeType ? datos.mimeType : archivo.mimeType;
+      const url = URL.createObjectURL(new Blob([base64AArrayBuffer(datos.bytes)], { type: mimeType }));
+      if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+      previewUrl.current = url;
+      setPreview({ archivo, url, mimeType });
+      setAviso(`Previsualización lista: ${archivo.nombre}.`);
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo previsualizar el archivo.');
+    } finally {
+      setPreviewLoading(false);
     }
   }
 
-  /** Guarda la versión editada y la registra en el hub. */
-  async function guardarEditado(blob: Blob, nombre: string) {
-    if (!editando) return;
-    const material: Material = {
-      id: idDeMaterial(),
-      nombre,
-      mimeType: 'image/png',
-      tamano: blob.size,
-      cliente: clienteDeNombre(nombre, slugs) ?? editando.cliente ?? cliente,
-      origen: 'drive',
-      driveId: editando.id,
-      carpetaId: carpeta?.id ?? null,
-      esImagen: true,
-      esVideo: false,
-      persona: cuenta?.correo ?? null,
-      fecha: new Date().toISOString(),
-      entregado: false,
-    };
-    const respuesta = await fetch('/api/material/registrar', {
-      method: 'POST',
-      headers: cabecera(),
-      body: JSON.stringify({ evento: 'registro', material }),
-    });
-    const datos = await respuesta.json();
-    if (!respuesta.ok) {
-      setError(datos?.error ?? 'No se pudo registrar el material.');
+  function cerrarPreview() {
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    previewUrl.current = null;
+    setPreview(null);
+  }
+
+  /**
+   * Opens the intact Craft application in a new tab and hands it the selected
+   * Drive bytes only after the editor proves it is the expected same-origin
+   * child. The Hub tab stays open and keeps the Drive token in memory.
+   */
+  function abrirEditor(archivo: ArchivoDrive) {
+    setError('');
+    const tipo = archivo.esVideo ? 'video' : 'foto';
+    const editor: EditorKind = archivo.esVideo ? 'rr-motion' : 'rr-imagen';
+    const nonce = crearNonceEditor();
+    const ventana = window.open(`/${cliente}/editar/${tipo}`, nonce);
+    if (!ventana) {
+      setError('El navegador bloqueó la pestaña del editor. Permite ventanas emergentes para este hub.');
       return;
     }
-    setAviso('Versión editada registrada. Ya se puede entregar.');
-    setRegistrados((actual) => [...actual, { material, blob }]);
-    await refrescarRegistro();
-    setEditando(null);
+
+    const bytes = (async () => {
+      const respuesta = await fetch('/api/drive/bajar', {
+        method: 'POST',
+        headers: cabecera(),
+        body: JSON.stringify({ archivoId: archivo.id }),
+      });
+      const datos = await respuesta.json();
+      if (!respuesta.ok || typeof datos.bytes !== 'string' || !datos.bytes) {
+        throw new Error(datos?.error ?? 'Drive no entregó los bytes del archivo.');
+      }
+      return {
+        nombre: archivo.nombre,
+        mimeType: typeof datos.mimeType === 'string' && datos.mimeType ? datos.mimeType : archivo.mimeType,
+        bytes: base64AArrayBuffer(datos.bytes),
+      };
+    })();
+
+    ventanasEditor.current.set(ventana, { ventana, editor, protocolo: null, nonce, archivo, carpetaId: carpeta?.id ?? '', bytes });
+    void bytes.catch((fallo) => {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo bajar el archivo desde Drive.');
+    });
+    setAviso(`Abriendo ${archivo.nombre} en ${editor === 'rr-motion' ? 'RR Motion' : 'RR Imagen'}…`);
   }
 
   /** Entrega la versión final: almacenamiento privado y enlace que vence. */
@@ -330,7 +375,7 @@ export function MaterialPanel({
     }
   }
 
-  async function refrescarRegistro() {
+  const refrescarRegistro = useCallback(async () => {
     try {
       const respuesta = await fetch('/api/material/auditoria', { cache: 'no-store' });
       const datos = await respuesta.json();
@@ -338,12 +383,126 @@ export function MaterialPanel({
     } catch {
       /* Si el registro no responde, se conserva lo que ya había. */
     }
-  }
+  }, []);
 
-  const delOtroCliente = useMemo(
-    () => (editando?.cliente ? esDeOtroCliente({ cliente: editando.cliente }, cliente) : false),
-    [editando, cliente],
-  );
+  const guardarSalidaEditor = useCallback(async (pendiente: EditorPendiente, mensaje: EditorSaveMessage) => {
+    const bytes = bytesComoUint8Array(mensaje.bytes);
+    const nombre = nombreVersionEditado(mensaje.nombre);
+    const respuesta = await fetch('/api/drive/subir', {
+      method: 'POST',
+      headers: cabecera(),
+      body: JSON.stringify({
+        carpetaId: pendiente.carpetaId,
+        nombre,
+        mimeType: mensaje.mimeType,
+        bytes: await bytesABase64(bytes),
+      }),
+    });
+    const datos = await respuesta.json();
+    if (!respuesta.ok) throw new Error(datos?.error ?? 'No se pudo guardar la salida del editor en Drive.');
+
+    const material: Material = {
+      id: idDeMaterial(),
+      nombre,
+      mimeType: mensaje.mimeType,
+      tamano: bytes.byteLength,
+      cliente: clienteDeNombre(nombre, slugs),
+      origen: 'drive',
+      driveId: datos.archivo?.id ?? null,
+      carpetaId: pendiente.carpetaId,
+      esImagen: mensaje.mimeType.startsWith('image/'),
+      esVideo: mensaje.mimeType.startsWith('video/'),
+      persona: cuenta?.correo ?? null,
+      fecha: new Date().toISOString(),
+      entregado: false,
+    };
+    await fetch('/api/material/registrar', {
+      method: 'POST',
+      headers: cabecera(),
+      body: JSON.stringify({ evento: 'registro', material }),
+    });
+    setAviso(`«${nombre}» quedó guardado como una nueva versión en Drive.`);
+    try {
+      const auditoria = await fetch('/api/material/auditoria', { cache: 'no-store' });
+      const datosAuditoria = await auditoria.json();
+      if (auditoria.ok && Array.isArray(datosAuditoria.eventos)) setEventos(datosAuditoria.eventos);
+    } catch {
+      /* La copia de Drive ya quedó hecha; se conserva el registro que había. */
+    }
+    await listar(pendiente.carpetaId, busqueda);
+    const archivoSubido = archivoSubidoParaLista(datos.archivo);
+    if (archivoSubido) {
+      setArchivos((actuales) => actuales.some((actual) => actual.id === archivoSubido.id) ? actuales : [...actuales, archivoSubido]);
+    }
+    setAviso(`«${nombre}» quedó guardado como una nueva versión en Drive.`);
+    pendiente.ventana.postMessage(
+      { type: 'rr-editor-save-result', version: EDITOR_BRIDGE_VERSION, nonce: pendiente.nonce, ok: true, nombre },
+      window.location.origin,
+    );
+  }, [busqueda, cabecera, cuenta?.correo, listar, slugs]);
+
+  useEffect(() => {
+    function recibirMensaje(evento: MessageEvent) {
+      if (evento.origin !== window.location.origin) return;
+      const source = evento.source as Window | null;
+      if (!source) return;
+      const pendiente = ventanasEditor.current.get(source);
+      if (!pendiente) return;
+
+      const protocolo = protocoloEditorListo(evento.data, pendiente.editor);
+      if (protocolo) {
+        pendiente.protocolo = protocolo;
+        if (typeof evento.data.nonce === 'string') pendiente.nonce = evento.data.nonce;
+        void pendiente.bytes
+          .then(({ nombre, mimeType, bytes }) => {
+            const transferible = bytes.slice(0);
+            const mensaje = protocolo === 'filmcraft'
+              ? {
+                  type: 'filmcraft:open',
+                  name: nombre,
+                  filename: nombre,
+                  mime: mimeType,
+                  nonce: pendiente.nonce,
+                  bytes: transferible,
+                }
+              : {
+                  protocol: 'rr-editor-bridge',
+                  type: 'rr-editor-open',
+                  version: EDITOR_BRIDGE_VERSION,
+                  editor: pendiente.editor,
+                  nonce: pendiente.nonce,
+                  filename: nombre,
+                  mime: mimeType,
+                  nombre,
+                  mimeType,
+                  bytes: transferible,
+                };
+            pendiente.ventana.postMessage(mensaje, window.location.origin, [transferible]);
+            setAviso(`«${nombre}» cargado en ${pendiente.editor === 'rr-motion' ? 'RR Motion' : 'RR Imagen'}.`);
+          })
+          .catch((fallo) => {
+            setError(fallo instanceof Error ? fallo.message : 'No se pudo cargar el archivo en el editor.');
+          });
+        return;
+      }
+
+      if (!pendiente.protocolo) return;
+      const guardado = normalizarMensajeEditorGuardado(evento.data, pendiente.editor, pendiente.protocolo);
+      if (guardado) {
+        if (guardado.nonce !== pendiente.nonce) return;
+        void guardarSalidaEditor(pendiente, guardado).catch((fallo) => {
+          setError(fallo instanceof Error ? fallo.message : 'No se pudo persistir la salida del editor.');
+          pendiente.ventana.postMessage(
+            { type: 'rr-editor-save-result', version: EDITOR_BRIDGE_VERSION, nonce: pendiente.nonce, ok: false },
+            window.location.origin,
+          );
+        });
+      }
+    }
+
+    window.addEventListener('message', recibirMensaje);
+    return () => window.removeEventListener('message', recibirMensaje);
+  }, [guardarSalidaEditor]);
 
   return (
     <div data-modulo="material" className="mx-auto grid max-w-6xl gap-8 px-5 py-8 md:px-10 md:py-12">
@@ -353,9 +512,9 @@ export function MaterialPanel({
           Material
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-blanco-80 md:text-lg md:leading-8">
-          La carpeta de Drive que elijas, la edición de fotos dentro del hub y la entrega
-          de la versión final con un enlace que vence. Sin credenciales, con la cuenta
-          personal de Google de cada persona.
+          La carpeta de Drive que elijas, los editores profesionales completos del hub y
+          la entrega de la versión final con un enlace que vence. Sin credenciales, con la
+          cuenta personal de Google de cada persona.
         </p>
         <p
           role="note"
@@ -524,6 +683,41 @@ export function MaterialPanel({
           </span>
         </div>
 
+        {preview && (
+          <section
+            data-testid={`material-preview-${preview.archivo.id}`}
+            aria-label={`Previsualización de ${preview.archivo.nombre}`}
+            className="mt-5 border border-fucsia bg-negro p-4"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="mono-label text-fucsia">// PREVISUALIZACIÓN</p>
+                <p className="mt-1 break-words text-sm font-bold text-blanco">{preview.archivo.nombre}</p>
+              </div>
+              <button type="button" onClick={cerrarPreview} className="btn-ghost min-h-[44px] justify-center">
+                Cerrar preview
+              </button>
+            </div>
+            <div className="mt-4 overflow-hidden border border-blanco-20 bg-negro">
+              {preview.archivo.esVideo ? (
+                <video
+                  controls
+                  preload="metadata"
+                  src={preview.url}
+                  className="mx-auto max-h-[520px] w-full bg-negro object-contain"
+                  aria-label={`Video ${preview.archivo.nombre}`}
+                />
+              ) : (
+                <img
+                  src={preview.url}
+                  alt={`Previsualización de ${preview.archivo.nombre}`}
+                  className="mx-auto max-h-[520px] w-full object-contain"
+                />
+              )}
+            </div>
+          </section>
+        )}
+
         {archivos.length === 0 ? (
           <p className="mt-5 text-sm leading-6 text-blanco-70">
             {carpeta
@@ -553,26 +747,33 @@ export function MaterialPanel({
                     </p>
                   )}
                   <div className="mt-auto flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      data-testid={`material-preview-button-${archivo.id}`}
+                      onClick={() => void previsualizar(archivo)}
+                      disabled={previewLoading}
+                      className="btn-ghost min-h-[44px] justify-center"
+                    >
+                      {previewLoading ? 'Cargando preview…' : 'Ver preview'}
+                    </button>
                     {archivo.esVideo ? (
-                      <Link
-                        href={`/${cliente}/editar/video`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
                         data-testid={`material-editar-video-${archivo.id}`}
+                        onClick={() => void abrirEditor(archivo)}
                         className="btn-ghost min-h-[44px] justify-center"
                       >
                         Editar video
-                      </Link>
+                      </button>
                     ) : (
-                      <Link
-                        href="/editors/rr-imagen/index.html"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
                         data-testid={`material-editar-${archivo.id}`}
+                        onClick={() => void abrirEditor(archivo)}
                         className="btn-ghost min-h-[44px] justify-center"
                       >
-                        Editar foto
-                      </Link>
+                        Editar
+                      </button>
                     )}
                   </div>
                 </li>
@@ -581,29 +782,6 @@ export function MaterialPanel({
           </ul>
         )}
       </section>
-
-      {editando && (
-        <section aria-labelledby="material-editor" className="border border-blanco-20 p-5 md:p-6">
-          <h2 id="material-editor" className="sr-only">
-            Editor de fotos
-          </h2>
-          {delOtroCliente && (
-            <p
-              role="alert"
-              data-testid="material-editor-ajeno"
-              className="mb-5 border-l-4 border-mostaza bg-mostaza-10 px-4 py-4 text-sm leading-6 text-mostaza"
-            >
-              {AVISO_CLIENTE_AJENO}
-            </p>
-          )}
-          <PhotoStudio
-            nombreArchivo={editando.nombre}
-            srcInicial={editando.src}
-            onCancelar={() => setEditando(null)}
-            onGuardar={guardarEditado}
-          />
-        </section>
-      )}
 
       <section aria-labelledby="material-entrega" className="border border-blanco-20 p-5 md:p-6">
         <h2 id="material-entrega" className="font-display text-2xl font-bold text-blanco">
@@ -624,7 +802,7 @@ export function MaterialPanel({
 
         {registrados.length === 0 && eventos.length === 0 ? (
           <p className="mt-5 text-sm leading-6 text-blanco-70">
-            Todavía no hay entregas registradas. Edita una foto y entrégala desde aquí.
+            Todavía no hay entregas registradas. Importa el archivo final y entrégalo desde aquí.
           </p>
         ) : (
           <ul className="mt-5 grid gap-3">
@@ -740,19 +918,18 @@ async function archivoABase64(archivo: File): Promise<string> {
   return blobABase64(archivo);
 }
 
-function bytesDeBase64(base64: string): Uint8Array<ArrayBuffer> {
-  const binario = atob(base64);
-  const bytes = new Uint8Array(new ArrayBuffer(binario.length));
-  for (let indice = 0; indice < binario.length; indice += 1) {
-    bytes[indice] = binario.charCodeAt(indice);
+async function bytesABase64(bytes: Uint8Array): Promise<string> {
+  let binario = '';
+  const paso = 0x8000;
+  for (let indice = 0; indice < bytes.length; indice += paso) {
+    binario += String.fromCharCode(...bytes.subarray(indice, indice + paso));
   }
-  return bytes;
+  return btoa(binario);
 }
 
-/** Pinta una imagen de ejemplo para poder editar sin descargar nada. */
-async function imagenDeEjemplo(nombre: string): Promise<string> {
-  const lienzo = document.createElement('canvas');
-  pintarImagenDeEjemplo(lienzo, nombre.slice(0, 22), 'material de ejemplo');
-  const blob = await new Promise<Blob | null>((resolver) => lienzo.toBlob(resolver, 'image/png'));
-  return URL.createObjectURL(blob ?? new Blob());
+function base64AArrayBuffer(base64: string): ArrayBuffer {
+  const binario = atob(base64);
+  const bytes = new Uint8Array(binario.length);
+  for (let indice = 0; indice < binario.length; indice += 1) bytes[indice] = binario.charCodeAt(indice);
+  return bytes.buffer;
 }

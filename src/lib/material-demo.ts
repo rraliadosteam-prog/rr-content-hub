@@ -20,8 +20,8 @@ import type { ArchivoDrive } from '@/lib/drive';
 
 export const CARPETAS_DEMO: readonly { id: string; nombre: string }[] = [
   { id: 'demo-carpeta-wundeer', nombre: 'Wundeer · Material 2026' },
-  { id: 'demo-carpeta-satiro', nombre: 'Sátiro · Material 2026' },
-  { id: 'demo-carpeta-boga', nombre: 'BOGA · Material 2026' },
+  { id: 'demo-carpeta-candilejas', nombre: 'Candilejas · Material 2026' },
+  { id: 'demo-carpeta-pesquera-oro-del-mar', nombre: 'Pesquera Oro del Mar · Material 2026' },
   { id: 'demo-carpeta-compartido', nombre: 'Compartido · Equipo RR' },
 ];
 
@@ -49,35 +49,35 @@ export const ARCHIVOS_DEMO: readonly ArchivoDrive[] = [
     miniatura: null,
   },
   {
-    id: 'demo-archivo-satiro-01',
-    nombre: 'satiro_banner-carta_2026-11-07.png',
+    id: 'demo-archivo-candilejas-01',
+    nombre: 'candilejas_pauta-estatica_2026-11-07.png',
     mimeType: 'image/png',
     tamano: 921_600,
     esImagen: true,
     esVideo: false,
-    carpetaId: 'demo-carpeta-satiro',
+    carpetaId: 'demo-carpeta-candilejas',
     modificado: '2026-11-07T09:45:00.000Z',
     miniatura: null,
   },
   {
-    id: 'demo-archivo-satiro-02',
-    nombre: 'satiro_video-cocina_2026-11-06.mp4',
+    id: 'demo-archivo-candilejas-02',
+    nombre: 'candilejas_broll-sede_2026-11-06.mp4',
     mimeType: 'video/mp4',
     tamano: 18_400_000,
     esImagen: false,
     esVideo: true,
-    carpetaId: 'demo-carpeta-satiro',
+    carpetaId: 'demo-carpeta-candilejas',
     modificado: '2026-11-06T18:10:00.000Z',
     miniatura: null,
   },
   {
-    id: 'demo-archivo-boga-01',
-    nombre: 'boga_post-marca_2026-11-04.jpg',
+    id: 'demo-archivo-pesquera-oro-del-mar-01',
+    nombre: 'pesquera-oro-del-mar_catalogo-mayorista_2026-11-04.jpg',
     mimeType: 'image/jpeg',
     tamano: 3_102_464,
     esImagen: true,
     esVideo: false,
-    carpetaId: 'demo-carpeta-boga',
+    carpetaId: 'demo-carpeta-pesquera-oro-del-mar',
     modificado: '2026-11-04T16:30:00.000Z',
     miniatura: null,
   },
@@ -93,6 +93,18 @@ export const ARCHIVOS_DEMO: readonly ArchivoDrive[] = [
     miniatura: null,
   },
 ];
+
+// Demo uploads live for the lifetime of the local preview process so the full
+// Drive -> editor -> new version flow remains observable without credentials.
+const archivosSubidosDemo: ArchivoDrive[] = [];
+
+export function archivosDemoActuales(): ArchivoDrive[] {
+  return [...ARCHIVOS_DEMO, ...archivosSubidosDemo];
+}
+
+export function agregarArchivoDemo(archivo: ArchivoDrive): void {
+  archivosSubidosDemo.push(archivo);
+}
 
 /** La cuenta de Google de ejemplo. */
 export const CUENTA_GOOGLE_DEMO = { correo: 'persona.demo@ejemplo.com', nombre: 'Persona de ejemplo' };
