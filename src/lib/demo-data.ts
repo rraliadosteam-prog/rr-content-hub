@@ -29,6 +29,7 @@ export type Idea = {
    */
   ad_id?: string | null;
   published_url?: string | null;
+  metrics?: { alcance?: number | null; interacciones?: number | null; conversiones?: number | null; nota?: string | null };
   reference_url?: string;
   camera: string;
   talent: string;

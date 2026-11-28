@@ -517,7 +517,7 @@ export async function POST(request: NextRequest) {
 
     // `null` vale: es como se BORRA un campo (quitar una fecha, quitar un
     // enlace). Sin él en el tipo, no se puede limpiar nada.
-    const cambios: Record<string, string | string[] | null> = {};
+    const cambios: Record<string, unknown> = {};
 
     const titulo = str(body.title, 200);
     if (titulo) cambios.title = titulo;
@@ -609,6 +609,22 @@ export async function POST(request: NextRequest) {
         if (!parseada.host) return error(`"${crudo}" no tiene dominio.`, 400);
         cambios.published_url = parseada.toString();
       }
+    }
+
+    if ('metrics' in body) {
+      const value = body.metrics;
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return error('Los resultados deben ser un objeto.', 400);
+      }
+      const raw = value as Record<string, unknown>;
+      const metricas: Record<string, number | string | null> = {};
+      for (const campo of ['alcance', 'interacciones', 'conversiones'] as const) {
+        if (raw[campo] === null || raw[campo] === undefined || raw[campo] === '') metricas[campo] = null;
+        else if (typeof raw[campo] === 'number' && Number.isFinite(raw[campo]) && raw[campo] >= 0) metricas[campo] = Math.round(raw[campo]);
+        else return error(`El resultado ${campo} debe ser un número positivo.`, 400);
+      }
+      metricas.nota = typeof raw.nota === 'string' ? raw.nota.trim().slice(0, 500) : null;
+      cambios.metrics = metricas;
     }
 
     if (!Object.keys(cambios).length) {
