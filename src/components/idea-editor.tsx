@@ -38,6 +38,8 @@ export function IdeaEditor({
     talent?: string | null;
     edit?: string | null;
     references: string[];
+    publishedUrl?: string | null;
+    metrics?: { alcance?: number | null; interacciones?: number | null; conversiones?: number | null; nota?: string | null };
   };
 }) {
   const router = useRouter();
@@ -53,6 +55,11 @@ export function IdeaEditor({
   const [talento, setTalento] = useState(initial.talent ?? '');
   const [edicion, setEdicion] = useState(initial.edit ?? '');
   const [referencia, setReferencia] = useState(initial.references[0] ?? '');
+  const [publishedUrl, setPublishedUrl] = useState(initial.publishedUrl ?? '');
+  const [alcance, setAlcance] = useState(initial.metrics?.alcance?.toString() ?? '');
+  const [interacciones, setInteracciones] = useState(initial.metrics?.interacciones?.toString() ?? '');
+  const [conversiones, setConversiones] = useState(initial.metrics?.conversiones?.toString() ?? '');
+  const [notaMetricas, setNotaMetricas] = useState(initial.metrics?.nota ?? '');
 
   const soloLectura = role === 'client_viewer';
   const sinReferencia = initial.references.length === 0;
@@ -97,6 +104,20 @@ export function IdeaEditor({
     if (camara !== (initial.camera ?? '')) cambios.cameraBrief = camara;
     if (talento !== (initial.talent ?? '')) cambios.talentBrief = talento;
     if (edicion !== (initial.edit ?? '')) cambios.editBrief = edicion;
+    if (publishedUrl !== (initial.publishedUrl ?? '')) cambios.publishedUrl = publishedUrl || null;
+    const metricas = {
+      alcance: alcance === '' ? null : Number(alcance),
+      interacciones: interacciones === '' ? null : Number(interacciones),
+      conversiones: conversiones === '' ? null : Number(conversiones),
+      nota: notaMetricas || null,
+    };
+    const metricasIniciales = initial.metrics ?? {};
+    if (JSON.stringify(metricas) !== JSON.stringify({
+      alcance: metricasIniciales.alcance ?? null,
+      interacciones: metricasIniciales.interacciones ?? null,
+      conversiones: metricasIniciales.conversiones ?? null,
+      nota: metricasIniciales.nota ?? null,
+    })) cambios.metrics = metricas;
 
     setGuardando(true);
     const { error: fallo, actualizado } = await updateIdea(ideaId, cambios);
@@ -112,7 +133,7 @@ export function IdeaEditor({
     // Se deja abierto para que se vea el resultado; la recarga del servidor
     // pone el embed y los textos al día.
     setTimeout(() => router.refresh(), 1200);
-  }, [titulo, descripcion, objetivo, camara, talento, edicion, referencia, ideaId, initial, router]);
+  }, [titulo, descripcion, objetivo, camara, talento, edicion, referencia, publishedUrl, alcance, interacciones, conversiones, notaMetricas, ideaId, initial, router]);
 
   if (soloLectura) {
     return (
@@ -269,6 +290,20 @@ export function IdeaEditor({
               </div>
             ))}
           </div>
+        </fieldset>
+
+        <fieldset className="border border-blanco-20 p-4">
+          <legend className="mono-label px-2 text-blanco-60">// PUBLICACIÓN Y RESULTADOS</legend>
+          <p className="mt-2 text-xs leading-5 text-blanco-50">Pega el enlace de la publicación y registra los resultados que RR o el cliente hayan confirmado. Solo las personas con acceso a este cliente los pueden ver.</p>
+          <label htmlFor="edit-publicada" className="mono-label mt-4 block text-blanco-50">ENLACE PUBLICADO</label>
+          <input id="edit-publicada" type="url" value={publishedUrl} onChange={(e) => setPublishedUrl(e.target.value)} placeholder="https://instagram.com/..." className="mt-2 w-full border border-blanco-30 bg-negro p-3 font-mono text-xs text-blanco focus:border-fucsia focus:outline-none" />
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {([['edit-alcance', 'ALCANCE', alcance, setAlcance], ['edit-interacciones', 'INTERACCIONES', interacciones, setInteracciones], ['edit-conversiones', 'CONVERSIONES', conversiones, setConversiones] ] as const).map(([id, label, value, setValue]) => (
+              <label key={id} htmlFor={id} className="font-mono text-[10px] text-blanco-50">{label}<input id={id} type="number" min="0" step="1" value={value} onChange={(e) => setValue(e.target.value)} className="mt-2 w-full border border-blanco-30 bg-negro p-3 text-sm text-blanco focus:border-fucsia focus:outline-none" /></label>
+            ))}
+          </div>
+          <label htmlFor="edit-nota-metricas" className="mono-label mt-4 block text-blanco-50">NOTA / FUENTE</label>
+          <textarea id="edit-nota-metricas" value={notaMetricas} onChange={(e) => setNotaMetricas(e.target.value)} rows={2} placeholder="Ej. Meta Ads · corte 22 nov" className="mt-2 w-full resize-none border border-blanco-30 bg-negro p-3 font-mono text-xs leading-6 text-blanco focus:border-fucsia focus:outline-none" />
         </fieldset>
       </div>
 

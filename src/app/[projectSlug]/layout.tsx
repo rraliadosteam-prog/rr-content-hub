@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getProject, getClientesDeLaPersona } from '@/lib/data';
 import { rolEnProyecto } from '@/lib/project-guard';
 import { WorkspaceShell } from '@/components/workspace-shell';
+import { InstalarApp } from '@/components/instalar-app';
 import { planPublicacionDe } from '@/lib/social-planning';
 
 export default async function ProjectLayout({ children, params }: { children: React.ReactNode; params: Promise<{ projectSlug: string }> }) {
@@ -40,6 +41,8 @@ export default async function ProjectLayout({ children, params }: { children: Re
       tienePlanSocial={tienePlanSocial}
     >
       {children}
+      <InstalarApp />
     </WorkspaceShell>
   );
 }
+

@@ -111,6 +111,7 @@ function mapIdea(row: RawIdea) {
      */
     due_at: (row.due_at as string | null) ?? null,
     published_url: (row.published_url as string | null) ?? null,
+    metrics: row.metrics && typeof row.metrics === 'object' ? row.metrics : {},
     /**
      * MEDIDO 2026-10-01: 19 ideas en `voting` con CERO votos, y el botón de
      * votar solo existía dentro de la ficha. Para poder votar desde la tarjeta
@@ -402,7 +403,7 @@ export async function getIdeas(projectId: string) {
 
   const { data } = await supabase
     .from('rr_hub_ideas')
-    .select('id, code, title, description, objective, content_type, category, origen, status, priority, created_at, updated_at, due_at, published_url, reference_urls, camera_brief, talent_brief, edit_brief, script_content, created_by, ad_id')
+    .select('id, code, title, description, objective, content_type, category, origen, status, priority, created_at, updated_at, due_at, published_url, metrics, reference_urls, camera_brief, talent_brief, edit_brief, script_content, created_by, ad_id')
     .eq('project_id', projectId)
     // Las ideas archivadas desaparecen del tablero, pero NO se borran. Siguen en
     // la tabla con sus votos y sus comentarios, y se pueden volver a desarchivar.

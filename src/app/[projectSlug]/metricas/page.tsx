@@ -4,6 +4,7 @@ import { QueueSection } from '@/components/queue-section';
 import { GraficasBanco } from '@/components/graficas-banco';
 import { todasLasGraficas } from '@/lib/graficas';
 import { inQueue } from '@/lib/queues';
+import { DEMO_MODE } from '@/lib/demo-mode';
 
 /**
  * This page used to be a byte-for-byte copy of `publicaciones` with different
@@ -12,7 +13,10 @@ import { inQueue } from '@/lib/queues';
  */
 export default async function Metrics({ params }: { params: Promise<{ projectSlug: string }> }) {
   const { projectSlug } = await params;
-  const { project } = await getProject(projectSlug); if (!project) notFound();
+  const { project, access } = await getProject(projectSlug); if (!project) notFound();
+  if (!DEMO_MODE && !access) {
+    return <main className="min-h-screen bg-negro px-5 py-16 text-blanco md:px-10"><div className="mx-auto max-w-2xl border border-mostaza-40 bg-blanco-05 p-6"><p className="eyebrow text-mostaza">[MÉTRICAS PROTEGIDAS]</p><h1 className="mt-3 font-display text-3xl font-bold">Este tablero es privado.</h1><p className="mt-4 text-sm leading-7 text-blanco-70">Los resultados de publicaciones contienen información del proyecto. Entra con el acceso de RR o del cliente correspondiente; si no tienes el código, solicítalo a Dirección.</p></div></main>;
+  }
   const todasLasIdeas = await getIdeas(project.id);
   const ideas = todasLasIdeas.filter((idea) => inQueue(idea.status, 'publicaciones'));
 

@@ -192,6 +192,7 @@ export type EditableIdea = {
    */
   dueAt?: string | null;
   publishedUrl?: string | null;
+  metrics?: { alcance?: number | null; interacciones?: number | null; conversiones?: number | null; nota?: string | null };
 };
 
 /**
@@ -221,6 +222,7 @@ export async function updateIdea(
   // `undefined` = no tocar. `null` = borrar. Se distinguen a propósito.
   if (cambios.dueAt !== undefined) cuerpo.dueAt = cambios.dueAt;
   if (cambios.publishedUrl !== undefined) cuerpo.publishedUrl = cambios.publishedUrl;
+  if (cambios.metrics !== undefined) cuerpo.metrics = cambios.metrics;
 
   const response = await postWorkspaceAction('update', cuerpo);
   if (!response) return { error: 'No se pudo contactar al servidor.' };
